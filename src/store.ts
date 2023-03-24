@@ -1,4 +1,9 @@
-import { legacy_createStore as createStore, Reducer, Action } from "redux";
+import {
+    legacy_createStore as createStore,
+    Reducer,
+    Action,
+    AnyAction,
+} from "redux";
 
 interface ICategory {
     id: number;
@@ -6,13 +11,16 @@ interface ICategory {
     url: string;
     downCategory: ICategory[] | undefined;
 }
-type Categoryies = ICategory[];
+type Categories = ICategory[];
 
-export const SET = "SET";
-
-const reducer: Reducer = (
-    state: Categoryies = [],
-    { type, ...data }: Action<string>
+export const SET: Action<string> = { type: "SET" };
+interface ICategoriesAction {
+    type: Action<string>;
+    data: ICategory;
+}
+const reducer: Reducer<Categories> = (
+    state: Categories = [],
+    { type, data }: ICategoriesAction
 ) => {
     switch (type) {
         case SET:
@@ -24,4 +32,4 @@ const reducer: Reducer = (
 const categoryStore = createStore(reducer);
 
 export { categoryStore };
-export type { Categoryies, ICategory };
+export type { Categories, ICategory };
