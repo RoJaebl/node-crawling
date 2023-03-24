@@ -1,6 +1,7 @@
 import { By, Button, Builder, WebDriver, Key } from "selenium-webdriver";
 import * as chrome from "selenium-webdriver/chrome.js";
-import { categoryStore } from "./store.js";
+import { getAllJSDocTagsOfKind } from "typescript";
+import { Categoryies, categoryStore, ICategory, SET } from "./store.js";
 
 const getDriver = async (
     browser: string,
@@ -20,12 +21,10 @@ const getDriver = async (
     }
 };
 
-const getCategoryXPath = (className: string): string =>
-    `//div[contains(@class,'${className}')]//ul[contains(@class,'_categoryLayer_category_list_2PSxr')]//li[contains(@class,'_categoryLayer_list_34UME')]`;
 const categoryXPath = {
-    major: getCategoryXPath("_categoryLayer_main_category_2A7mb"),
-    minor: getCategoryXPath("_categoryLayer_middle_category_2g2zY"),
-    sub: getCategoryXPath("_categoryLayer_subclass_1K649"),
+    major: `//div[contains(@class,'_categoryLayer_main_category_2A7mb')]//ul[contains(@class,'_categoryLayer_category_list_2PSxr')]//li[contains(@class,'_categoryLayer_list_34UME')]`,
+    minor: `//div[contains(@class,'_categoryLayer_middle_category_2g2zY')]//ul[contains(@class,'_categoryLayer_category_list_2PSxr')]//li[contains(@class,'_categoryLayer_list_34UME')]`,
+    sub: `//div[contains(@class,'_categoryLayer_subclass_1K649')]//ul[contains(@class,'_categoryLayer_category_list_2PSxr')]//li[contains(@class,'_categoryLayer_list_34UME')]`,
 };
 const run = async () => {
     try {
@@ -40,21 +39,61 @@ const run = async () => {
         await driver.sleep(100);
         const majors = await driver.findElements(By.xpath(categoryXPath.major));
         for await (const major of majors) {
-            await actor.move({ origin: major }).perform();
-            await driver.sleep(200);
+            const apable = await major.findElement(By.xpath("a"));
+            const newMajor: ICategory = {
+                id: +(await apable
+                    .getAttribute("href")
+                    .then((res) =>
+                        res.slice(res.indexOf("catId=") + "carId=".length)
+                    )),
+                name: await apable.getText(),
+                url: await apable.getAttribute("href"),
+                downCategory: [],
+            };
+            await actor.move({ duration: 100, origin: major }).perform();
             const minors = await driver.findElements(
                 By.xpath(categoryXPath.minor)
             );
             await actor.clear();
+            if ((await apable.getText()) === "나들이/여행") break;
             for await (const minor of minors) {
-                await actor.move({ origin: minor }).perform();
-                await driver.sleep(200);
+                const apable = await minor.findElement(By.xpath("a"));
+                const newMinor: ICategory = {
+                    id: +(await apable
+                        .getAttribute("href")
+                        .then((res) =>
+                            res.slice(res.indexOf("catId=") + "carId=".length)
+                        )),
+                    name: await apable.getText(),
+                    url: await apable.getAttribute("href"),
+                    downCategory: [],
+                };
+                newMajor.downCategory.push(newMinor);
+                await actor.move({ duration: 100, origin: minor }).perform();
                 const subs = await driver.findElements(
                     By.xpath(categoryXPath.sub)
                 );
                 await actor.clear();
+                for await (const sub of subs) {
+                    const apable = await sub.findElement(By.xpath("a"));
+                    const newSub: ICategory = {
+                        id: +(await apable
+                            .getAttribute("href")
+                            .then((res) =>
+                                res.slice(
+                                    res.indexOf("catId=") + "carId=".length
+                                )
+                            )),
+                        name: await apable.getText(),
+                        url: await apable.getAttribute("href"),
+                        downCategory: undefined,
+                    };
+                    newMinor.downCategory.push(newSub);
+                }
             }
+            categoryStore.dispatch({ type: SET, data: newMajor });
         }
+        console.log(categoryStore.getState());
         await driver.quit();
     } catch (err) {
         console.log(err);
