@@ -1,13 +1,33 @@
-import {
-    By,
-    Builder,
-    WebDriver,
-    WebElement,
-    Actions,
-} from "selenium-webdriver";
+import { By, Builder, WebDriver, WebElement, Key } from "selenium-webdriver";
 import * as chrome from "selenium-webdriver/chrome.js";
-import { categoryStore } from "./store.js";
+import { crawlingStore, SET } from "./store.js";
 import { getCategories } from "./categories.js";
+import { getCategoryItem } from "./items.js";
+import fs from "fs";
+
+// categories data path
+export const CATEGORY_PATH = "categories.json";
+
+export const pageScrollTo = async (
+    driver: WebDriver,
+    direction?: "horizon"
+) => {
+    let oldDirect = (await driver.executeScript(
+        direction ? `return window.scrollX;` : `return window.scrollY;`
+    )) as number;
+    // scroll to bottom
+    while (true) {
+        if (direction)
+            await driver.executeScript(`window.scrollBy({ left: 100 });`);
+        else await driver.findElement(By.xpath("//body")).sendKeys(Key.END);
+        await driver.sleep(100);
+        const newDirect = (await driver.executeScript(
+            direction ? `return window.scrollX;` : `return window.scrollY;`
+        )) as number;
+        if (oldDirect === newDirect) break;
+        oldDirect = newDirect;
+    }
+};
 /**
  * hover action
  * @param {Actions} actor
@@ -15,12 +35,31 @@ import { getCategories } from "./categories.js";
  * @param {number} duration
  */
 export const hover = async (
-    actor: Actions,
+    driver: WebDriver,
     origin: WebElement,
-    duration?: number
+    potions?: { duration?: number; sleep?: number }
 ) => {
-    await actor.move({ duration, origin }).perform();
+    const actor = await driver.actions({ async: true });
+    await actor
+        .move({ duration: potions.duration ?? undefined, origin })
+        .perform();
     await actor.clear();
+    if (potions) driver.sleep(potions.sleep ?? 1);
+};
+/**
+ * click action
+ * @param {Actions} actor
+ * @param {WebElement} origin
+ */
+export const click = async (
+    driver: WebDriver,
+    origin: WebElement,
+    options?: { sleep?: number }
+) => {
+    const actor = await driver.actions({ async: true });
+    await actor.move({ origin }).click().perform();
+    await actor.clear();
+    if (options) driver.sleep(options.sleep ?? 1);
 };
 /**
  *
@@ -45,7 +84,19 @@ const getDriver = async (
         return null;
     }
 };
-
+/**
+ * check file is exist
+ * @param {string} path
+ * @returns {boolean}
+ */
+const isfileExist = (path: string) => {
+    try {
+        fs.accessSync(path, fs.constants.F_OK);
+        return true;
+    } catch (err) {
+        return false;
+    }
+};
 // run
 const run = async () => {
     try {
@@ -53,7 +104,17 @@ const run = async () => {
         const driver = await getDriver("chrome", "/usr/bin/google-chrome");
         if (!driver) throw driver;
         // get categories data
-        await getCategories(driver);
+        if (!isfileExist(CATEGORY_PATH) || !fs.statSync(CATEGORY_PATH).size)
+            await getCategories(driver);
+        // write categories data into store
+        else
+            crawlingStore.dispatch({
+                type: SET,
+                data: JSON.parse(fs.readFileSync(CATEGORY_PATH).toString()),
+            });
+
+        // get category item
+        await getCategoryItem(driver);
     } catch (err) {
         console.log(err);
     }
