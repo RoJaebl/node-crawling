@@ -14,6 +14,7 @@ interface ICategory {
 type Categories = ICategory[];
 
 export const SET: Action<string> = { type: "SET" };
+export const ADD: Action<string> = { type: "ADD" };
 interface ICategoriesAction {
     type: Action<string>;
     data: ICategory;
@@ -23,8 +24,10 @@ const reducer: Reducer<Categories> = (
     { type, data }: ICategoriesAction
 ) => {
     switch (type) {
-        case SET:
+        case ADD:
             return [...state, data];
+        case SET:
+            return [data];
         default:
             return [...state];
     }
