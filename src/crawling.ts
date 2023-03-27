@@ -1,6 +1,13 @@
-import { By, Builder, WebDriver, WebElement, Key } from "selenium-webdriver";
+import {
+    By,
+    Builder,
+    WebDriver,
+    WebElement,
+    Key,
+    Locator,
+} from "selenium-webdriver";
 import * as chrome from "selenium-webdriver/chrome.js";
-import { crawlingStore, SET } from "./store.js";
+import { crawlingStore, SET_CATEGOTY } from "./store.js";
 import { getCategories } from "./categories.js";
 import { getCategoryItem } from "./items.js";
 import fs from "fs";
@@ -28,6 +35,12 @@ export const pageScrollTo = async (
         oldDirect = newDirect;
     }
 };
+//   WebDriver | IWebElementId | WebElementPromise | string | boolean | Promise<beelean | string | void | WebElement[] | ILocation | ISize | IRectangle | ShadowRootPromise | IWebElementId>
+export const find = async <T>(
+    webValue: WebDriver | WebElement,
+    location: Locator,
+    callbackfn: (element: WebElement) => T | Promise<T>
+) => await callbackfn(await webValue.findElement(location));
 /**
  * hover action
  * @param {Actions} actor
@@ -109,10 +122,9 @@ const run = async () => {
         // write categories data into store
         else
             crawlingStore.dispatch({
-                type: SET,
+                type: SET_CATEGOTY,
                 data: JSON.parse(fs.readFileSync(CATEGORY_PATH).toString()),
             });
-
         // get category item
         await getCategoryItem(driver);
     } catch (err) {

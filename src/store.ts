@@ -1,6 +1,7 @@
 import { legacy_createStore as createStore, Reducer, Action } from "redux";
+import { ECompanyClass } from "./items.js";
 
-interface ICompanyInfo {
+export interface ICompany {
     title?: string;
     name?: string;
     companyNum?: number;
@@ -9,40 +10,45 @@ interface ICompanyInfo {
     phone?: string;
     main?: string;
 }
-interface IItemInfo {
+export interface IItem {
     title: string;
     price: string;
     image: string;
-    company: ICompanyInfo;
+    url: string;
+    itemClass: keyof typeof ECompanyClass;
+    company?: ICompany;
 }
-interface ICategory {
+export interface ICategory {
     id: number;
     name: string;
     url: string;
-    items?: IItemInfo[];
+    items?: IItem[];
     downCategory: ICategory[] | undefined;
 }
-type CrawlingData = {
+export type CrawlingData = {
     [key: string]: ICategory[] | string | number;
 };
 
-export const SET: Action<string> = { type: "SET" };
+export const SET_CATEGOTY: Action<string> = { type: "SET_CATEGOTY" };
 interface ICategoriesAction {
     type: Action<string>;
     data: CrawlingData;
 }
 const reducer: Reducer<CrawlingData> = (
-    state: CrawlingData = {},
+    state: CrawlingData = { categories: [] },
     { type, data }: ICategoriesAction
 ) => {
     switch (type) {
-        case SET:
-            return { ...state, ...data };
+        case SET_CATEGOTY:
+            return {
+                ...state,
+                ["categories"]: [
+                    ...(state["categories"] as ICategory[]),
+                    ...(data["categories"] as ICategory[]),
+                ],
+            };
         default:
             return { ...state };
     }
 };
-const crawlingStore = createStore(reducer);
-
-export { crawlingStore };
-export type { CrawlingData, ICategory };
+export const crawlingStore = createStore(reducer);
