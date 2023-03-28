@@ -7,7 +7,7 @@ import {
     Locator,
 } from "selenium-webdriver";
 import * as chrome from "selenium-webdriver/chrome.js";
-import { crawlingStore, SET_CATEGOTY } from "./store.js";
+import { crawlingStore, SET } from "./store.js";
 import { getCategories } from "./categories.js";
 import { getCategoryItem } from "./items.js";
 import fs from "fs";
@@ -122,8 +122,10 @@ const run = async () => {
         // write categories data into store
         else
             crawlingStore.dispatch({
-                type: SET_CATEGOTY,
-                data: JSON.parse(fs.readFileSync(CATEGORY_PATH).toString()),
+                type: SET,
+                data: {
+                    ...JSON.parse(fs.readFileSync(CATEGORY_PATH).toString()),
+                },
             });
         // get category item
         await getCategoryItem(driver);
