@@ -48,7 +48,7 @@ export const getCategories = async (driver: WebDriver) => {
     // category button click
     await driver.findElement(propsXPath.categoryButton).click();
     // wait for category layer
-    await driver.sleep(100);
+    await driver.sleep(1000);
     // get major categories
     const majors = await driver.findElements(propsXPath.major);
     // iterate major categories
@@ -69,10 +69,11 @@ export const getCategories = async (driver: WebDriver) => {
                 minorId: [],
             } as IMajor,
         };
-        await hover(driver, major, { sleep: 100 });
+        await hover(driver, major, { sleep: 10 });
         const minors = await driver.findElements(propsXPath.minor);
         // iterate minor categories
         for await (const minor of minors) {
+            await driver.sleep(10);
             const cpMinor = { ...crawlingStore.getState()["minor"] };
             const el = minor.findElement(By.xpath("a"));
             const minorId = +(await el
@@ -100,10 +101,11 @@ export const getCategories = async (driver: WebDriver) => {
                     },
                 },
             });
-            await hover(driver, minor, { sleep: 100 });
+            await hover(driver, minor, { sleep: 10 });
             const subs = await driver.findElements(propsXPath.sub);
             // iterate sub categories
             for await (const sub of subs) {
+                await driver.sleep(10);
                 const el = sub.findElement(By.xpath("a"));
                 const subId = +(await el
                     .getAttribute("href")

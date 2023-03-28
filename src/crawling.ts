@@ -17,19 +17,21 @@ export const CATEGORY_PATH = "categories.json";
 
 export const pageScrollTo = async (
     driver: WebDriver,
-    direction?: "horizon"
+    option?: { sleep?: number; direction?: "horizon" }
 ) => {
     let oldDirect = (await driver.executeScript(
-        direction ? `return window.scrollX;` : `return window.scrollY;`
+        option.direction ? `return window.scrollX;` : `return window.scrollY;`
     )) as number;
     // scroll to bottom
     while (true) {
-        if (direction)
+        if (option.direction)
             await driver.executeScript(`window.scrollBy({ left: 100 });`);
         else await driver.findElement(By.xpath("//body")).sendKeys(Key.END);
-        await driver.sleep(100);
+        await driver.sleep(option.sleep);
         const newDirect = (await driver.executeScript(
-            direction ? `return window.scrollX;` : `return window.scrollY;`
+            option.direction
+                ? `return window.scrollX;`
+                : `return window.scrollY;`
         )) as number;
         if (oldDirect === newDirect) break;
         oldDirect = newDirect;
@@ -123,9 +125,7 @@ const run = async () => {
         else
             crawlingStore.dispatch({
                 type: SET,
-                data: {
-                    ...JSON.parse(fs.readFileSync(CATEGORY_PATH).toString()),
-                },
+                data: JSON.parse(fs.readFileSync(CATEGORY_PATH).toString()),
             });
         // get category item
         await getCategoryItem(driver);

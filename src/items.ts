@@ -1,6 +1,6 @@
 import { By, WebDriver } from "selenium-webdriver";
 import { CATEGORY_PATH, click, find, pageScrollTo } from "./crawling.js";
-import { crawlingStore, IItem, SET } from "./store.js";
+import { crawlingStore, ICrawlingStore, IItem, SET } from "./store.js";
 import fs from "fs";
 
 const propsXPath = {
@@ -21,16 +21,6 @@ const propsXPath = {
         `//div[contains(@class,'subFilter_select_box__dX_vV')][2]//li//a[text()='80개씩 보기']`
     ),
     items: By.xpath("//div[contains(@class,'basicList_item__0T9JD')]"),
-    item: {
-        url: By.xpath("//a[contains(@class,'basicList_mall__BC5Xu')]"),
-        itemClass: By.xpath(
-            "//span[contains(@class,'basicList_grade__unbQp')]"
-        ),
-        title: By.xpath("//div[contains(@class,'basicList_title__VfX3c')]"),
-        image: By.xpath(
-            "//div[contains(@class,'basicList_mall_area__faH62')]//a[contains(@class, 'basicList_mall__BC5Xu')]"
-        ),
-    },
 };
 export enum ECompanyClass {
     "씨앗" = 0,
@@ -43,8 +33,9 @@ export enum ECompanyClass {
 export const getCategoryItem = async (driver: WebDriver) => {
     const cpSubs = { ...crawlingStore.getState()["sub"] };
     for (const sub of Object.values(cpSubs)) {
+        if (sub.id === 100010504) break;
         await driver.get(sub.url);
-        await driver.sleep(100);
+        await driver.sleep(1000);
         // naver pay click
         const naverPay = await driver.findElement(propsXPath.naverPay);
         await click(driver, naverPay, { sleep: 100 });
@@ -57,40 +48,51 @@ export const getCategoryItem = async (driver: WebDriver) => {
         const itemNum = await driver.findElement(propsXPath.selectItemNum80);
         await click(driver, itemNum);
         // scroll to bottom
-        await pageScrollTo(driver);
-        if (sub.id === 100010504) break;
-        // TODO: all sub category crawling
+        await pageScrollTo(driver, { sleep: 200 });
         // all sub category items crawling
         const items = await driver.findElements(propsXPath.items);
+        let index = 0;
         for await (const item of items) {
-            const url = await find(item, propsXPath.item.url, (el) =>
-                el.getAttribute("href")
+            index++;
+            await driver.sleep(10);
+            const agable = await item.findElement(
+                By.xpath(
+                    `(//a[contains(@class,'basicList_mall__BC5Xu')])[${index}]`
+                )
             );
-            const itemClass = (await find(
-                item,
-                propsXPath.item.itemClass,
-                (el) => el.getText()
-            )) as keyof typeof ECompanyClass;
-            const itemId = +(await find(item, propsXPath.item.url, (el) =>
-                el.getAttribute("data-nclick").then((value) => {
+            const url = await agable.getAttribute("href");
+            const itemId = +(await agable
+                .getAttribute("data-nclick")
+                .then((value) => {
                     const idStart = value.indexOf("i:") + "i:".length;
                     const idEnd = value.indexOf(",r:");
                     return value.slice(idStart, idEnd);
-                })
-            ));
-            //TODO: item data crawling
+                }));
+            let itemClass: keyof typeof ECompanyClass;
+            try {
+                itemClass = (await item
+                    .findElement(
+                        By.xpath(
+                            `(//div[contains(@class,'basicList_mall_grade__1hPzs')])[${index}]//span[contains(@class,'basicList_grade__unbQp')]//img/parent::span`
+                        )
+                    )
+                    .getText()) as keyof typeof ECompanyClass;
+            } catch (err) {
+                continue;
+            }
             if (ECompanyClass[itemClass] < 3 || !url.includes("naver.com"))
                 continue;
             const newItem = {
                 [itemId]: {
                     id: itemId,
-                    name: await find(item, propsXPath.item.title, (el) =>
-                        el.getText()
-                    ),
+                    name: await item
+                        .findElement(
+                            By.xpath(
+                                `(//div[contains(@class,'basicList_title__VfX3c')])[${index}]`
+                            )
+                        )
+                        .getText(),
                     price: await item.findElement(By.xpath("//span")).getText(),
-                    image: await find(item, propsXPath.item.image, (el) =>
-                        el.getAttribute("href")
-                    ),
                     url,
                     itemClass,
                     majorId: sub.majorId,
@@ -105,7 +107,10 @@ export const getCategoryItem = async (driver: WebDriver) => {
                 data: {
                     ...crawlingStore.getState(),
                     sub: { ...cpSubs },
-                    item: { ...crawlingStore.getState()["item"], ...newItem },
+                    item: {
+                        ...crawlingStore.getState()["item"],
+                        ...newItem,
+                    },
                 },
             });
         }

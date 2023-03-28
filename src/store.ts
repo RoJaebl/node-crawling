@@ -32,7 +32,6 @@ export interface IItem extends ICategory {
     minorId: number;
     subId: number;
     price: string;
-    image: string;
     itemClass: keyof typeof ECompanyClass;
     company?: ICompany;
 }
