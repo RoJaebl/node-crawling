@@ -1,6 +1,6 @@
 import { By, WebDriver } from "selenium-webdriver";
-import { CATEGORY_PATH, click, find, pageScrollTo } from "./crawling.js";
-import { crawlingStore, ICrawlingStore, IItem, SET } from "./store.js";
+import { CATEGORY_PATH, click, pageScrollTo } from "./crawling.js";
+import { crawlingStore, IItem, SET } from "./store.js";
 import fs from "fs";
 
 const propsXPath = {
@@ -38,7 +38,7 @@ export const getCategoryItem = async (driver: WebDriver) => {
         await driver.sleep(1000);
         // naver pay click
         const naverPay = await driver.findElement(propsXPath.naverPay);
-        await click(driver, naverPay, { sleep: 100 });
+        await click(driver, naverPay, { sleep: 500 });
         // select item click
         const selectItemNum = await driver.findElement(
             propsXPath.selectItemNum
@@ -48,7 +48,7 @@ export const getCategoryItem = async (driver: WebDriver) => {
         const itemNum = await driver.findElement(propsXPath.selectItemNum80);
         await click(driver, itemNum);
         // scroll to bottom
-        await pageScrollTo(driver, { sleep: 200 });
+        await pageScrollTo(driver, { duration: 500, sleep: 100 });
         // all sub category items crawling
         const items = await driver.findElements(propsXPath.items);
         let index = 0;

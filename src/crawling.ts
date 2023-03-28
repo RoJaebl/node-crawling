@@ -17,7 +17,7 @@ export const CATEGORY_PATH = "categories.json";
 
 export const pageScrollTo = async (
     driver: WebDriver,
-    option?: { sleep?: number; direction?: "horizon" }
+    option?: { duration?: number; sleep?: number; direction?: "horizon" }
 ) => {
     let oldDirect = (await driver.executeScript(
         option.direction ? `return window.scrollX;` : `return window.scrollY;`
@@ -27,7 +27,7 @@ export const pageScrollTo = async (
         if (option.direction)
             await driver.executeScript(`window.scrollBy({ left: 100 });`);
         else await driver.findElement(By.xpath("//body")).sendKeys(Key.END);
-        await driver.sleep(option.sleep);
+        await driver.sleep(option.duration ?? 1);
         const newDirect = (await driver.executeScript(
             option.direction
                 ? `return window.scrollX;`
@@ -36,13 +36,8 @@ export const pageScrollTo = async (
         if (oldDirect === newDirect) break;
         oldDirect = newDirect;
     }
+    await driver.sleep(option.sleep ?? 1);
 };
-//   WebDriver | IWebElementId | WebElementPromise | string | boolean | Promise<beelean | string | void | WebElement[] | ILocation | ISize | IRectangle | ShadowRootPromise | IWebElementId>
-export const find = async <T>(
-    webValue: WebDriver | WebElement,
-    location: Locator,
-    callbackfn: (element: WebElement) => T | Promise<T>
-) => await callbackfn(await webValue.findElement(location));
 /**
  * hover action
  * @param {Actions} actor
