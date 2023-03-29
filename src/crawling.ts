@@ -1,10 +1,11 @@
 import { By, Builder, WebDriver, WebElement, Key } from "selenium-webdriver";
 import * as chrome from "selenium-webdriver/chrome.js";
-import { crawlingStore, SET } from "./store.js";
+import { crawlingStore, ICompany, ICrawlingStore, SET } from "./store.js";
 import { getCategories } from "./categories.js";
 import { getCategoryItem } from "./items.js";
 import fs from "fs";
 import { getCompanyDetail } from "./detail.js";
+import XLSX from "xlsx";
 
 // categories data path
 export const CATEGORY_PATH = "categories.json";
@@ -116,25 +117,75 @@ const isfileExist = (path: string) => {
 };
 // run
 const run = async () => {
-    try {
-        // get driver
-        const driver = await getDriver("chrome", "/usr/bin/google-chrome");
-        if (!driver) throw driver;
-        // get categories data
-        if (!isfileExist(CATEGORY_PATH) || !fs.statSync(CATEGORY_PATH).size)
-            await getCategories(driver);
-        // write categories data into store
-        else
-            crawlingStore.dispatch({
-                type: SET,
-                data: JSON.parse(fs.readFileSync(CATEGORY_PATH).toString()),
-            });
-        // get category item
-        await getCategoryItem(driver);
-        await getCompanyDetail(driver);
-    } catch (err) {
-        console.log(err);
-    }
+    // try {
+    //     // get driver
+    //     const driver = await getDriver("chrome", "/usr/bin/google-chrome");
+    //     if (!driver) throw driver;
+    //     // get categories data
+    //     if (!isfileExist(CATEGORY_PATH) || !fs.statSync(CATEGORY_PATH).size)
+    //         await getCategories(driver);
+    //     // write categories data into store
+    //     else
+    //         crawlingStore.dispatch({
+    //             type: SET,
+    //             data: JSON.parse(fs.readFileSync(CATEGORY_PATH).toString()),
+    //         });
+    //     // get category item
+    //     await getCategoryItem(driver);
+    //     await getCompanyDetail(driver);
+    // } catch (err) {
+    //     console.log(err);
+    // }
+    const data = [
+        { name: "John", age: 25 },
+        { name: "Jane", age: 32 },
+    ];
+    // json file read
+    fs.readFile(CATEGORY_PATH, (err, buffer) => {
+        const json = JSON.parse(buffer.toString("utf-8")) as ICrawlingStore;
+
+        const major = Object.values(json["major"]).map((value) => value);
+        const minor = Object.values(json["minor"]).map((value) => value);
+        const sub = Object.values(json["sub"]).map((value) => value);
+        var items = {};
+        for (const [itemsKey, ItemsVal] of Object.entries(json["item"])) {
+            var newItem = {};
+            for (const [itemKey, itemVal] of Object.entries(ItemsVal)) {
+                if (itemKey != "company")
+                    newItem = { ...newItem, [itemKey]: itemVal };
+                else newItem = { ...newItem, ...itemVal };
+            }
+            items = { ...items, [itemsKey]: newItem };
+        }
+        const item = Object.values(items).map((value) => value);
+        const majorWorksheet = XLSX.utils.json_to_sheet(major);
+        const minorWorksheet = XLSX.utils.json_to_sheet(minor);
+        const subWorksheet = XLSX.utils.json_to_sheet(sub);
+        const itemWorksheet = XLSX.utils.json_to_sheet(item);
+        const workbook = XLSX.utils.book_new();
+        XLSX.utils.book_append_sheet(
+            workbook,
+            majorWorksheet,
+            "Major categories"
+        );
+        XLSX.utils.book_append_sheet(
+            workbook,
+            minorWorksheet,
+            "Minor categories"
+        );
+        XLSX.utils.book_append_sheet(workbook, subWorksheet, "Sub categories");
+        XLSX.utils.book_append_sheet(
+            workbook,
+            itemWorksheet,
+            "item categories"
+        );
+
+        const xlsxBuffer = XLSX.write(workbook, {
+            bookType: "xlsx",
+            type: "buffer",
+        });
+        fs.writeFileSync("data.xlsx", xlsxBuffer);
+    });
 };
 
 run();
