@@ -30,7 +30,9 @@ export const pageScrollTo = async (
     // scroll to bottom
     while (true) {
         if (option.direction)
-            await driver.executeScript(`window.scrollBy({ left: 100 });`);
+            await driver.executeScript(
+                `window.scrollBy({ left: window.screenLeft });`
+            );
         else await driver.findElement(By.xpath("//body")).sendKeys(Key.END);
         await driver.sleep(option.duration ?? 1);
         const newDirect = (await driver.executeScript(
@@ -128,7 +130,7 @@ const run = async () => {
                 data: JSON.parse(fs.readFileSync(CATEGORY_PATH).toString()),
             });
         // get category item
-        //await getCategoryItem(driver);
+        await getCategoryItem(driver);
         await getCompanyDetail(driver);
     } catch (err) {
         console.log(err);

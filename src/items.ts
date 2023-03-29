@@ -35,7 +35,7 @@ export const getCategoryItem = async (driver: WebDriver) => {
     for (const [subkey, sub] of Object.entries(cpSubs)) {
         if (+subkey === 100010504) break;
         await driver.get(sub.url);
-        await driver.sleep(1000);
+        await driver.sleep(500);
         // naver pay click
         const naverPay = await driver.findElement(propsXPath.naverPay);
         await click(driver, naverPay, { sleep: 500 });
@@ -48,7 +48,7 @@ export const getCategoryItem = async (driver: WebDriver) => {
         const itemNum = await driver.findElement(propsXPath.selectItemNum80);
         await click(driver, itemNum);
         // scroll to bottom
-        await pageScrollTo(driver, { duration: 500, sleep: 100 });
+        await pageScrollTo(driver, { duration: 100, sleep: 200 });
         // all sub category items crawling
         const items = await driver.findElements(propsXPath.items);
         let index = 0;
@@ -92,13 +92,27 @@ export const getCategoryItem = async (driver: WebDriver) => {
                             )
                         )
                         .getText(),
-                    price: await item.findElement(By.xpath("//span")).getText(),
+                    price: await item
+                        .findElement(
+                            By.xpath(
+                                `(//span[contains(@class,'price_price__LEGN7')])[${index}]`
+                            )
+                        )
+                        .getText(),
                     url,
                     itemClass,
                     majorId: sub.majorId,
                     minorId: sub.minorId,
                     subId: +subkey,
-                    company: {},
+                    company: {
+                        title: "",
+                        name: "",
+                        companyNum: 0,
+                        business: "",
+                        adress: "",
+                        phone: "",
+                        mail: "",
+                    },
                 } as IItem,
             };
             cpSubs[+subkey].itemId.push(itemId);
