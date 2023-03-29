@@ -32,8 +32,8 @@ export enum ECompanyClass {
 }
 export const getCategoryItem = async (driver: WebDriver) => {
     const cpSubs = { ...crawlingStore.getState()["sub"] };
-    for (const sub of Object.values(cpSubs)) {
-        if (sub.id === 100010504) break;
+    for (const [subkey, sub] of Object.entries(cpSubs)) {
+        if (+subkey === 100010504) break;
         await driver.get(sub.url);
         await driver.sleep(1000);
         // naver pay click
@@ -57,7 +57,7 @@ export const getCategoryItem = async (driver: WebDriver) => {
             await driver.sleep(10);
             const agable = await item.findElement(
                 By.xpath(
-                    `(//a[contains(@class,'basicList_mall__BC5Xu')])[${index}]`
+                    `(//a[contains(@class,'basicList_link__JLQJf')])[${index}]`
                 )
             );
             const url = await agable.getAttribute("href");
@@ -97,11 +97,11 @@ export const getCategoryItem = async (driver: WebDriver) => {
                     itemClass,
                     majorId: sub.majorId,
                     minorId: sub.minorId,
-                    subId: sub.id,
+                    subId: +subkey,
                     company: {},
                 } as IItem,
             };
-            cpSubs[sub.id].itemId.push(itemId);
+            cpSubs[+subkey].itemId.push(itemId);
             crawlingStore.dispatch({
                 type: SET,
                 data: {
@@ -118,20 +118,3 @@ export const getCategoryItem = async (driver: WebDriver) => {
     // write categories data into json file
     fs.writeFileSync(CATEGORY_PATH, JSON.stringify(crawlingStore.getState()));
 };
-// item detail info
-//     await driver.get(url);
-//     await driver.sleep(100);
-//     await pageScrollTo(driver);
-//     await pageScrollTo(driver, "horizon");
-//     await click(
-//         driver,
-//         await driver.findElement(
-//             By.xpath("//div[contains(@class,'_2TupsMhDnt')]")
-//         ),
-//         { sleep: 100 }
-//     );
-//     const companyDetail = await driver.findElements(
-//         By.xpath("//div[contains(@class,'_1r4A1x_ryD')]")
-//     );
-//     const name = await companyDetail[0].findElements(By.xpath("/span"));
-// };

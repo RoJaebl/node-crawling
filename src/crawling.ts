@@ -1,20 +1,25 @@
-import {
-    By,
-    Builder,
-    WebDriver,
-    WebElement,
-    Key,
-    Locator,
-} from "selenium-webdriver";
+import { By, Builder, WebDriver, WebElement, Key } from "selenium-webdriver";
 import * as chrome from "selenium-webdriver/chrome.js";
 import { crawlingStore, SET } from "./store.js";
 import { getCategories } from "./categories.js";
 import { getCategoryItem } from "./items.js";
 import fs from "fs";
+import { getCompanyDetail } from "./detail.js";
 
 // categories data path
 export const CATEGORY_PATH = "categories.json";
 
+export const tryXPath = async (
+    driver: WebDriver,
+    xpath: string,
+    options?: { sleep: number }
+) => {
+    try {
+        return await driver.findElement(By.xpath(xpath));
+    } catch (e) {
+        return null;
+    }
+};
 export const pageScrollTo = async (
     driver: WebDriver,
     option?: { duration?: number; sleep?: number; direction?: "horizon" }
@@ -123,7 +128,8 @@ const run = async () => {
                 data: JSON.parse(fs.readFileSync(CATEGORY_PATH).toString()),
             });
         // get category item
-        await getCategoryItem(driver);
+        //await getCategoryItem(driver);
+        await getCompanyDetail(driver);
     } catch (err) {
         console.log(err);
     }
