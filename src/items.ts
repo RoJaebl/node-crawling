@@ -33,31 +33,32 @@ export enum ECompanyClass {
 export const getCategoryItem = async (driver: WebDriver) => {
     const cpSubs = { ...crawlingStore.getState()["sub"] };
     for (const [subkey, sub] of Object.entries(cpSubs)) {
-        if (+subkey === 100010504) break;
+        if (sub.itemId.length > 0) continue;
         await driver.get(sub.url);
         await driver.sleep(500);
-        // naver pay click
-        const naverPay = await driver.findElement(propsXPath.naverPay);
-        await click(driver, naverPay, { sleep: 500 });
-        // select item click
+        try {
+            const naverPay = await driver.findElement(propsXPath.naverPay);
+            await click(driver, naverPay);
+        } catch (err) {
+            console.log("카테고리 아이템이 없습니다.", sub.name);
+            continue;
+        }
         const selectItemNum = await driver.findElement(
             propsXPath.selectItemNum
         );
         await click(driver, selectItemNum);
-        // select item num 80 click
         const itemNum = await driver.findElement(propsXPath.selectItemNum80);
         await click(driver, itemNum);
-        // scroll to bottom
-        await pageScrollTo(driver, { duration: 100, sleep: 200 });
-        // all sub category items crawling
+        await pageScrollTo(driver, { duration: 200, sleep: 200 });
         const items = await driver.findElements(propsXPath.items);
         let index = 0;
+        let newItem: { [id: number]: IItem } = {};
         for await (const item of items) {
             index++;
             await driver.sleep(10);
             const agable = await item.findElement(
                 By.xpath(
-                    `(//a[contains(@class,'basicList_link__JLQJf')])[${index}]`
+                    `(//a[contains(@class,'basicList_mall__BC5Xu')])[${index}]`
                 )
             );
             const url = await agable.getAttribute("href");
@@ -82,53 +83,52 @@ export const getCategoryItem = async (driver: WebDriver) => {
             }
             if (ECompanyClass[itemClass] < 3 || !url.includes("naver.com"))
                 continue;
-            const newItem = {
-                [itemId]: {
-                    id: itemId,
-                    name: await item
-                        .findElement(
-                            By.xpath(
-                                `(//div[contains(@class,'basicList_title__VfX3c')])[${index}]`
-                            )
-                        )
-                        .getText(),
-                    price: await item
-                        .findElement(
-                            By.xpath(
-                                `(//span[contains(@class,'price_price__LEGN7')])[${index}]`
-                            )
-                        )
-                        .getText(),
-                    url,
-                    itemClass,
-                    majorId: sub.majorId,
-                    minorId: sub.minorId,
-                    subId: +subkey,
-                    company: {
-                        title: "",
-                        name: "",
-                        companyNum: 0,
-                        business: "",
-                        adress: "",
-                        phone: "",
-                        mail: "",
-                    },
-                } as IItem,
-            };
             cpSubs[+subkey].itemId.push(itemId);
-            crawlingStore.dispatch({
-                type: SET,
-                data: {
-                    ...crawlingStore.getState(),
-                    sub: { ...cpSubs },
-                    item: {
-                        ...crawlingStore.getState()["item"],
-                        ...newItem,
-                    },
+            newItem[itemId] = {
+                id: itemId,
+                name: await item
+                    .findElement(
+                        By.xpath(
+                            `(//div[contains(@class,'basicList_title__VfX3c')])[${index}]`
+                        )
+                    )
+                    .getText(),
+                price: await item
+                    .findElement(
+                        By.xpath(
+                            `(//span[contains(@class,'price_price__LEGN7')])[${index}]`
+                        )
+                    )
+                    .getText(),
+                url,
+                itemClass,
+                majorId: sub.majorId,
+                minorId: sub.minorId,
+                subId: +subkey,
+                company: {
+                    title: "",
+                    ceo: "",
+                    companyNum: 0,
+                    business: "",
+                    adress: "",
+                    phone: "",
+                    mail: "",
                 },
-            });
+            } as IItem;
         }
+
+        crawlingStore.dispatch({
+            type: SET,
+            data: Object.assign(
+                crawlingStore.getState(),
+                { sub: { ...cpSubs } },
+                { item: { ...crawlingStore.getState()["item"], ...newItem } }
+            ),
+        });
+        // write categories data into json file
+        fs.writeFileSync(
+            CATEGORY_PATH,
+            JSON.stringify(crawlingStore.getState())
+        );
     }
-    // write categories data into json file
-    fs.writeFileSync(CATEGORY_PATH, JSON.stringify(crawlingStore.getState()));
 };
