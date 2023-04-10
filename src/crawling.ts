@@ -13,12 +13,24 @@ import { getCategoryItem } from "./items.js";
 import fs from "fs";
 import { getCompanyDetail } from "./detail.js";
 import XLSX from "xlsx";
+import { map } from "cheerio/lib/api/traversing.js";
+
+export const edgeHeader = {
+    userAgent:
+        "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/70.0.3538.102 Safari/537.36 Edge/18.19582",
+};
+export const chromeHeader = {
+    userAgent:
+        "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/104.0.5112.79 Safari/537.36",
+};
 
 // categories data path
 export const CATEGORY_PATH = "categories.json";
 
 export const arrayToObject = (array: any[], keyField: string) => {
     return array.reduce((obj, item) => {
+        if (typeof item[keyField] === "undefined")
+            throw new Error("keyField is 'undefined'");
         obj[item[keyField]] = item;
         return obj;
     }, {});
@@ -107,8 +119,10 @@ const getDriver = async (
         option.setChromeBinaryPath(binaryPath);
         const driver = await new Builder()
             .forBrowser(browser)
+            .usingHttpAgent(chromeHeader)
             .setChromeOptions(option)
             .build();
+        await driver.manage().setTimeouts({ implicit: 1 });
         return driver;
     } catch (err) {
         console.log(err);
@@ -135,6 +149,28 @@ const rl = readline.createInterface({
 const addSheet = <T>(workbook: XLSX.WorkBook, name: string, data: T[]) => {
     const worksheet = XLSX.utils.json_to_sheet(data);
     XLSX.utils.book_append_sheet(workbook, worksheet, name);
+};
+const getXlsxToJson = async <T>(
+    filePath: string,
+    sheetIndex: number
+): Promise<T[]> => {
+    // Read the file
+    const fileBuffer = fs.readFileSync(filePath);
+
+    // Parse the file using xlsx
+    const workbook = XLSX.read(fileBuffer, { type: "buffer" });
+
+    // Get the first sheet in the workbook
+    const sheetName = workbook.SheetNames[sheetIndex];
+    try {
+        const worksheet = workbook.Sheets[sheetName];
+        // Convert the worksheet to JSON
+        const jsonData = XLSX.utils.sheet_to_json(worksheet) as T[];
+        return jsonData;
+    } catch (err) {
+        console.log(err);
+        return undefined;
+    }
 };
 const jsonToXlsx = () => {
     // read json
@@ -184,12 +220,9 @@ const command = async (driver: WebDriver) => {
             return;
         }
         if (line === "save" || line === "s") {
-            fs.writeFile(
+            fs.writeFileSync(
                 CATEGORY_PATH,
-                JSON.stringify(crawlingStore.getState()),
-                (err) => {
-                    if (err) console.log(err);
-                }
+                JSON.stringify(crawlingStore.getState())
             );
         }
         if (line === "xlsx" || line === "x") {
@@ -197,31 +230,104 @@ const command = async (driver: WebDriver) => {
         }
     });
 };
+// add item name
+const getItemName = async (driver: WebDriver) => {
+    const cpItems = { ...crawlingStore.getState()["item"] };
+    for await (const item of Object.values(cpItems)) {
+        if (item.name != "") continue;
+        await driver.get(item.url);
+        await driver.sleep(500);
+        try {
+            const name = await driver
+                .findElement(By.xpath("//h3[contains(@class,'_22kNQuEXmb')]"))
+                .getText();
+            cpItems[item.id] = { ...item, name };
+            crawlingStore.dispatch({
+                type: SET,
+                payload: { ...crawlingStore.getState(), item: cpItems },
+            });
+        } catch (err) {
+            console.log(err);
+        }
+    }
+    fs.writeFileSync(CATEGORY_PATH, JSON.stringify(crawlingStore.getState()));
+    jsonToXlsx();
+};
 // run
 const run = async () => {
+    // get driver
+    const driver = await getDriver("chrome", "/usr/bin/google-chrome");
     try {
-        // get driver
-        const driver = await getDriver("chrome", "/usr/bin/google-chrome");
         // console command
         command(driver);
         if (!driver) throw driver;
         // get categories data
-        if (!isfileExist(CATEGORY_PATH) || !fs.statSync(CATEGORY_PATH).size)
+        if (!isfileExist(CATEGORY_PATH) || !fs.statSync(CATEGORY_PATH).size) {
             await getCategories(driver);
+        }
         // write categories data into store
         else
             crawlingStore.dispatch({
                 type: SET,
-                data: JSON.parse(fs.readFileSync(CATEGORY_PATH).toString()),
+                payload: JSON.parse(fs.readFileSync(CATEGORY_PATH).toString()),
             });
 
         // get category item
         //await getCategoryItem(driver);
         // get company detail
-        await getCompanyDetail(driver);
-        await jsonToXlsx();
+        //await getCompanyDetail(driver);
+        // await jsonToXlsx();
+        // get item name
+        //getItemName(driver);
     } catch (err) {
         console.log(err);
+        await driver.close();
     }
 };
 run();
+// interface IXlsx extends IItem, ICompany {}
+// (async () => {
+//     const data = await getXlsxToJson<IXlsx>("data.xlsx", 3);
+//     const newDatas = data.map((item) => {
+//         const {
+//             title,
+//             companyNum,
+//             business,
+//             adress,
+//             phone,
+//             mail,
+//             ceo,
+//             ...otherProperties
+//         } = item;
+
+//         const newItem = {
+//             ...otherProperties,
+//             company: {
+//                 title,
+//                 ceo,
+//                 companyNum,
+//                 business,
+//                 adress,
+//                 phone,
+//                 mail,
+//             },
+//         };
+//         return newItem;
+//     });
+//     const json = (await arrayToObject(newDatas, "id")) as IItem;
+//     fs.writeFileSync(
+//         CATEGORY_PATH,
+//         JSON.stringify({ major: {}, minor: {}, sub: {}, item: json })
+//     );
+// })();
+
+// const cpItems = { ...crawlingStore.getState()["item"] };
+// const newItems = Object.values(cpItems).reduce((items, item) => {
+//     if (item.company.title != "") items[item.id] = item;
+//     return items;
+// }, {});
+// fs.writeFileSync(
+//     CATEGORY_PATH,
+//     JSON.stringify({ ...crawlingStore.getState(), item: newItems })
+// );
+// jsonToXlsx();

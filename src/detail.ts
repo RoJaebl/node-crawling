@@ -8,8 +8,8 @@ export const getCompanyDetail = async (driver: WebDriver) => {
     let cpItems = { ...crawlingStore.getState()["item"] };
     let isCheck = false;
     for await (const [itemKey, item] of Object.entries(cpItems)) {
-        if (itemKey != "82208365412" && !isCheck) continue;
-        if (itemKey === "82208365412") isCheck = !isCheck;
+        if (itemKey != "85736192164" && !isCheck) continue;
+        if (itemKey === "85736192164") isCheck = !isCheck;
         if (item.company.title !== "") continue;
         try {
             await driver.get(item.url);
@@ -58,7 +58,7 @@ export const getCompanyDetail = async (driver: WebDriver) => {
                 cpItems[item.id].company = cpCompany;
                 crawlingStore.dispatch({
                     type: SET,
-                    data: { ...crawlingStore.getState(), item: cpItems },
+                    payload: { ...crawlingStore.getState(), item: cpItems },
                 });
                 console.log(cpItems[item.id].company);
             }
@@ -94,7 +94,7 @@ export const getCompanyDetail = async (driver: WebDriver) => {
                 }
                 crawlingStore.dispatch({
                     type: SET,
-                    data: { ...crawlingStore.getState(), item: cpItems },
+                    payload: { ...crawlingStore.getState(), item: cpItems },
                 });
                 console.log(cpItems[item.id].company);
             }

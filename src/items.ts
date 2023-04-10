@@ -119,7 +119,7 @@ export const getCategoryItem = async (driver: WebDriver) => {
 
         crawlingStore.dispatch({
             type: SET,
-            data: Object.assign(
+            payload: Object.assign(
                 crawlingStore.getState(),
                 { sub: { ...cpSubs } },
                 { item: { ...crawlingStore.getState()["item"], ...newItem } }

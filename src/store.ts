@@ -45,11 +45,11 @@ export const SET = "SET";
 
 const reducer: Reducer<ICrawlingStore> = (
     state: ICrawlingStore = { major: {}, minor: {}, sub: {}, item: {} },
-    { type, data }: { type: string; data: ICrawlingStore }
+    { type, payload }: { type: string; payload: ICrawlingStore }
 ) => {
     switch (type) {
         case SET:
-            return { ...data };
+            return { ...payload };
         default:
             return { ...state };
     }

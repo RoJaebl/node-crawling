@@ -25,3 +25,7 @@ yarn-error.log*
 # crawling data
 *.xlsx
 categories.json 
+
+# not ignore crawling data
+!crawlingData/*.xlsx
+!crawlingData/categories.json
