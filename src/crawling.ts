@@ -1,50 +1,56 @@
-import { By, Builder, WebDriver, WebElement, Key } from "selenium-webdriver";
-import * as chrome from "selenium-webdriver/chrome.js";
 import {
-    crawlingStore,
-    ICompany,
-    ICrawlingStore,
-    IItem,
-    SET,
-} from "./store.js";
+    By,
+    Builder,
+    WebDriver,
+    WebElement,
+    Key,
+    until,
+    Locator,
+} from "selenium-webdriver";
+import * as chrome from "selenium-webdriver/chrome.js";
+import fs from "fs";
+import XLSX from "xlsx";
+import { crawlingStore, ICrawlingStore, SET } from "./store.js";
 import readline from "readline";
 import { getCategories } from "./categories.js";
-import { getCategoryItem } from "./items.js";
-import fs from "fs";
-import { getCompanyDetail } from "./detail.js";
-import XLSX from "xlsx";
-import { map } from "cheerio/lib/api/traversing.js";
+import { getItems } from "./items.js";
+import { getDetail } from "./detail.js";
 
-export const edgeHeader = {
+const edgeHeader = {
     userAgent:
         "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/70.0.3538.102 Safari/537.36 Edge/18.19582",
 };
-export const chromeHeader = {
+const chromeHeader = {
     userAgent:
         "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/104.0.5112.79 Safari/537.36",
 };
-
 // categories data path
 export const CATEGORY_PATH = "categories.json";
 
-export const arrayToObject = (array: any[], keyField: string) => {
-    return array.reduce((obj, item) => {
-        if (typeof item[keyField] === "undefined")
-            throw new Error("keyField is 'undefined'");
-        obj[item[keyField]] = item;
-        return obj;
-    }, {});
-};
-
-export const tryXPath = async (
+export const tryElement = async (
     driver: WebDriver,
-    xpath: string,
-    options?: { sleep: number }
-) => {
+    locator: Locator,
+    element?: WebElement
+): Promise<WebElement | undefined> => {
     try {
-        return await driver.findElement(By.xpath(xpath));
-    } catch (e) {
-        return null;
+        await driver.wait(until.elementLocated(locator), 100);
+        if (element === undefined) return await driver.findElement(locator);
+        else return await element.findElement(locator);
+    } catch (err) {
+        return undefined;
+    }
+};
+export const tryElements = async (
+    driver: WebDriver,
+    locator: Locator,
+    element?: WebElement
+): Promise<WebElement[] | undefined> => {
+    try {
+        await driver.wait(until.elementLocated(locator), 100);
+        if (element === undefined) return await driver.findElements(locator);
+        else return await element.findElements(locator);
+    } catch (err) {
+        return undefined;
     }
 };
 export const pageScrollTo = async (
@@ -72,12 +78,6 @@ export const pageScrollTo = async (
     }
     await driver.sleep(option.sleep ?? 1);
 };
-/**
- * hover action
- * @param {Actions} actor
- * @param {WebElement} origin
- * @param {number} duration
- */
 export const hover = async (
     driver: WebDriver,
     origin: WebElement,
@@ -89,11 +89,6 @@ export const hover = async (
     if (!options) return;
     await driver.sleep(options.sleep);
 };
-/**
- * click action
- * @param {Actions} actor
- * @param {WebElement} origin
- */
 export const click = async (
     driver: WebDriver,
     origin: WebElement,
@@ -104,36 +99,24 @@ export const click = async (
     await actor.clear();
     if (options) await driver.sleep(options.sleep ?? 1);
 };
-/**
- *
- * @param {string} browser
- * @param {string} binaryPath
- * @returns {Promise<WebDriver | null>}
- */
 const getDriver = async (
     browser: string,
     binaryPath: string
-): Promise<WebDriver | null> => {
+): Promise<WebDriver | undefined> => {
     try {
         const option = new chrome.Options();
         option.setChromeBinaryPath(binaryPath);
         const driver = await new Builder()
             .forBrowser(browser)
-            .usingHttpAgent(chromeHeader)
+            .usingHttpAgent(chromeHeader.userAgent)
             .setChromeOptions(option)
             .build();
-        await driver.manage().setTimeouts({ implicit: 1 });
         return driver;
     } catch (err) {
-        console.log(err);
-        return null;
+        console.log("not create driver");
+        return undefined;
     }
 };
-/**
- * check file is exist
- * @param {string} path
- * @returns {boolean}
- */
 const isfileExist = (path: string) => {
     try {
         fs.accessSync(path, fs.constants.F_OK);
@@ -142,72 +125,11 @@ const isfileExist = (path: string) => {
         return false;
     }
 };
-const rl = readline.createInterface({
-    input: process.stdin,
-    output: process.stdout,
-});
-const addSheet = <T>(workbook: XLSX.WorkBook, name: string, data: T[]) => {
-    const worksheet = XLSX.utils.json_to_sheet(data);
-    XLSX.utils.book_append_sheet(workbook, worksheet, name);
-};
-const getXlsxToJson = async <T>(
-    filePath: string,
-    sheetIndex: number
-): Promise<T[]> => {
-    // Read the file
-    const fileBuffer = fs.readFileSync(filePath);
-
-    // Parse the file using xlsx
-    const workbook = XLSX.read(fileBuffer, { type: "buffer" });
-
-    // Get the first sheet in the workbook
-    const sheetName = workbook.SheetNames[sheetIndex];
-    try {
-        const worksheet = workbook.Sheets[sheetName];
-        // Convert the worksheet to JSON
-        const jsonData = XLSX.utils.sheet_to_json(worksheet) as T[];
-        return jsonData;
-    } catch (err) {
-        console.log(err);
-        return undefined;
-    }
-};
-const jsonToXlsx = () => {
-    // read json
-    const json = JSON.parse(
-        fs.readFileSync(CATEGORY_PATH).toString("utf-8")
-    ) as ICrawlingStore;
-    // item reformat
-    const itemsArr = Object.entries(json["item"]).map(
-        ([itemsKey, ItemsVal]) => {
-            let newItem = { ...ItemsVal, ...ItemsVal["company"] };
-            delete newItem["company"];
-            return { key: itemsKey, value: newItem };
-        }
-    );
-    // array to object
-    let items = itemsArr.reduce((acc, cur) => {
-        const { key, value } = cur;
-        acc[+key] = value;
-        return acc;
-    }, {});
-
-    // create workbook
-    const workbook = XLSX.utils.book_new();
-    addSheet(workbook, "Major categories", Object.values(json["major"]));
-    addSheet(workbook, "Minor categories", Object.values(json["minor"]));
-    addSheet(workbook, "Sub categories", Object.values(json["sub"]));
-    addSheet(workbook, "item categories", Object.values(items));
-    // write file
-    fs.writeFileSync(
-        "data.xlsx",
-        XLSX.write(workbook, {
-            bookType: "xlsx",
-            type: "buffer",
-        })
-    );
-};
 const command = async (driver: WebDriver) => {
+    const rl = readline.createInterface({
+        input: process.stdin,
+        output: process.stdout,
+    });
     rl.on("line", async (line: string) => {
         if (line === "exit" || line === "q" || line === "quit") {
             fs.writeFileSync(
@@ -229,6 +151,108 @@ const command = async (driver: WebDriver) => {
             jsonToXlsx();
         }
     });
+};
+const addSheet = <T>(workbook: XLSX.WorkBook, name: string, data: T[]) => {
+    const worksheet = XLSX.utils.json_to_sheet(data);
+    XLSX.utils.book_append_sheet(workbook, worksheet, name);
+};
+const jsonToXlsx = () => {
+    // read json
+    const json = JSON.parse(
+        fs.readFileSync(CATEGORY_PATH).toString("utf-8")
+    ) as ICrawlingStore;
+    // item reformat
+    const itemsArr = Object.entries(json["item"]).map(
+        ([itemsKey, ItemsVal]) => {
+            const newItem = { ...ItemsVal, ...ItemsVal["company"] };
+            delete newItem["company"];
+            return { key: itemsKey, value: newItem };
+        }
+    );
+    // array to object
+    const newItems = itemsArr.reduce((newItem, { key, value }) => {
+        newItem[+key] = value;
+        return newItem;
+    }, {});
+
+    // create workbook
+    const workbook = XLSX.utils.book_new();
+    addSheet(workbook, "Major categories", Object.values(json["major"]));
+    addSheet(workbook, "Minor categories", Object.values(json["minor"]));
+    addSheet(workbook, "Sub categories", Object.values(json["sub"]));
+    addSheet(workbook, "item categories", Object.values(newItems));
+    // write file
+    fs.writeFileSync(
+        "data.xlsx",
+        XLSX.write(workbook, {
+            bookType: "xlsx",
+            type: "buffer",
+        })
+    );
+};
+// run
+const run = async () => {
+    // get driver
+    const driver = await getDriver("chrome", "/usr/bin/google-chrome");
+    if (driver === undefined) return;
+    // console command
+    command(driver);
+    try {
+        // get categories data
+        if (!isfileExist(CATEGORY_PATH) || !fs.statSync(CATEGORY_PATH).size)
+            await getCategories(driver);
+        // write categories data into store
+        else
+            crawlingStore.dispatch({
+                type: SET,
+                payload: JSON.parse(fs.readFileSync(CATEGORY_PATH).toString()),
+            });
+
+        // get category item
+        await getItems(driver);
+        // get company detail
+        await getDetail(driver);
+        // get item name
+        jsonToXlsx();
+        // close driver
+        await driver.quit();
+    } catch (err) {
+        console.log(err);
+        await driver.quit();
+    }
+};
+run();
+
+// get array to object
+const arrayToObject = (array: any[], keyField: string) => {
+    return array.reduce((obj, item) => {
+        if (typeof item[keyField] === "undefined")
+            throw new Error("keyField is 'undefined'");
+        obj[item[keyField]] = item;
+        return obj;
+    }, {});
+};
+
+// get xlsx file to json
+const getXlsxToJson = async <T>(
+    filePath: string,
+    sheetIndex: number
+): Promise<T[]> => {
+    // Read the file
+    const fileBuffer = fs.readFileSync(filePath);
+    // Parse the file using xlsx
+    const workbook = XLSX.read(fileBuffer, { type: "buffer" });
+    // Get the first sheet in the workbook
+    const sheetName = workbook.SheetNames[sheetIndex];
+    try {
+        const worksheet = workbook.Sheets[sheetName];
+        // Convert the worksheet to JSON
+        const jsonData = XLSX.utils.sheet_to_json(worksheet) as T[];
+        return jsonData;
+    } catch (err) {
+        console.log(err);
+        return undefined;
+    }
 };
 // add item name
 const getItemName = async (driver: WebDriver) => {
@@ -253,38 +277,7 @@ const getItemName = async (driver: WebDriver) => {
     fs.writeFileSync(CATEGORY_PATH, JSON.stringify(crawlingStore.getState()));
     jsonToXlsx();
 };
-// run
-const run = async () => {
-    // get driver
-    const driver = await getDriver("chrome", "/usr/bin/google-chrome");
-    try {
-        // console command
-        command(driver);
-        if (!driver) throw driver;
-        // get categories data
-        if (!isfileExist(CATEGORY_PATH) || !fs.statSync(CATEGORY_PATH).size) {
-            await getCategories(driver);
-        }
-        // write categories data into store
-        else
-            crawlingStore.dispatch({
-                type: SET,
-                payload: JSON.parse(fs.readFileSync(CATEGORY_PATH).toString()),
-            });
 
-        // get category item
-        //await getCategoryItem(driver);
-        // get company detail
-        //await getCompanyDetail(driver);
-        // await jsonToXlsx();
-        // get item name
-        //getItemName(driver);
-    } catch (err) {
-        console.log(err);
-        await driver.close();
-    }
-};
-run();
 // interface IXlsx extends IItem, ICompany {}
 // (async () => {
 //     const data = await getXlsxToJson<IXlsx>("data.xlsx", 3);

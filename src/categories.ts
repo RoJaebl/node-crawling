@@ -1,7 +1,7 @@
 import fs from "fs";
 import { By, Locator, WebDriver, WebElement, until } from "selenium-webdriver";
 import { crawlingStore, IMajor, IMinor, ISub, SET } from "./store.js";
-import { CATEGORY_PATH, hover } from "./crawling.js";
+import { CATEGORY_PATH, click, hover } from "./crawling.js";
 import { ICategory } from "./store.js";
 
 const propsXPath = {
@@ -30,11 +30,6 @@ const getCategoryInfo = async (
     const name = await apable.getText();
     const url = await apable.getAttribute("href");
     return { id, name, url };
-};
-const callCategoryPage = async (driver: WebDriver) => {
-    await driver.get("https://shopping.naver.com/");
-    await driver.wait(until.elementLocated(propsXPath.categoryButton), 1000);
-    await driver.findElement(propsXPath.categoryButton).click();
 };
 const getCategory = async (
     driver: WebDriver,
@@ -73,7 +68,11 @@ const getCategory = async (
  * // ex) categories.sub[1000002].name === "여성의류"
  */
 export const getCategories = async (driver: WebDriver) => {
-    await callCategoryPage(driver);
+    await driver.get("https://shopping.naver.com/");
+    await driver.wait(until.elementLocated(propsXPath.categoryButton), 1000);
+    const buttonpable = await driver.findElement(propsXPath.categoryButton);
+    await click(driver, buttonpable);
+
     // init categories
     const newMajors: { [key: number]: IMajor } = {};
     const newMinors: { [key: number]: IMinor } = {};
@@ -100,6 +99,7 @@ export const getCategories = async (driver: WebDriver) => {
                 name: minorInfo.name,
                 url: minorInfo.url,
                 majorId: majorInfo.id,
+                majorName: majorInfo.name,
                 subId: [],
             };
             const newSub = await getCategory(
@@ -109,7 +109,10 @@ export const getCategories = async (driver: WebDriver) => {
                     id: subInfo.id,
                     name: subInfo.name,
                     url: subInfo.url,
+                    majorId: majorInfo.id,
+                    majorName: majorInfo.name,
                     minorId: minorInfo.id,
+                    minorName: minorInfo.name,
                     itemId: [],
                 })
             );

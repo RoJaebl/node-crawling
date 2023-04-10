@@ -1,102 +1,92 @@
 import { By, WebDriver } from "selenium-webdriver";
 import fs from "fs";
 import { crawlingStore } from "./store.js";
-import { CATEGORY_PATH, click, pageScrollTo, tryXPath } from "./crawling.js";
+import {
+    CATEGORY_PATH,
+    click,
+    pageScrollTo,
+    tryElement,
+    tryElements,
+} from "./crawling.js";
 import { ICompany, SET } from "./store.js";
 
-export const getCompanyDetail = async (driver: WebDriver) => {
-    let cpItems = { ...crawlingStore.getState()["item"] };
-    let isCheck = false;
-    for await (const [itemKey, item] of Object.entries(cpItems)) {
-        if (itemKey != "85736192164" && !isCheck) continue;
-        if (itemKey === "85736192164") isCheck = !isCheck;
+export const getDetail = async (driver: WebDriver) => {
+    const newItems = { ...crawlingStore.getState()["item"] };
+    for await (const [itemKey, item] of Object.entries(newItems)) {
         if (item.company.title !== "") continue;
         try {
             await driver.get(item.url);
             const url = await driver.getCurrentUrl();
-            if (!url.includes(".naver.com")) throw new Error("not naver url");
-            await driver.sleep(500);
+            if (!url.includes(".naver.com")) continue;
+            await driver.sleep(100);
             await pageScrollTo(driver, { duration: 100, sleep: 200 });
             await pageScrollTo(driver, {
                 direction: "horizon",
                 sleep: 100,
             });
-            let company = await tryXPath(
+
+            const companyTabbable = await tryElement(
                 driver,
-                "//div[contains(@class,'_8ulQk8xi5m')]",
-                { sleep: 100 }
+                By.xpath("//div[contains(@class,'_8ulQk8xi5m')]")
             );
             let index = 0;
-
             // normal company
-            if (!company === null || !company) {
-                company = await driver.findElement(
+            if (companyTabbable === undefined) {
+                const company = await tryElement(
+                    driver,
                     By.xpath("//div[contains(@class,'_2TupsMhDnt')]")
                 );
-                await click(driver, company, { sleep: 10 });
-
-                const els = await company.findElements(
+                await click(driver, company);
+                const infos = await tryElements(
+                    driver,
                     By.xpath(
                         "//div[contains(@class,'_1lLY1TyclY')]//span[contains(@class,'_10PxysFyMd')]"
-                    )
+                    ),
+                    company
                 );
-                let cpCompany: ICompany = {
-                    title: "",
-                    ceo: "",
-                    companyNum: 0,
-                    business: "",
-                    adress: "",
-                    phone: "",
-                    mail: "",
+
+                const newCompnay = {
+                    title: await infos[0].getText(),
+                    ceo: await infos[1].getText(),
+                    companyNum: +(await infos[2].getText()),
+                    business: await infos[3].getText(),
+                    adress: await infos[4].getText(),
+                    phone: await infos[5].getText(),
+                    mail: await infos[6].getText(),
                 };
-                for await (const prop of Object.keys(cpCompany)) {
-                    cpCompany = Object.assign(cpCompany, {
-                        [prop]: await els[index].getText(),
-                    });
-                    index++;
-                }
-                cpItems[item.id].company = cpCompany;
+                newItems[item.id]["company"] = newCompnay;
                 crawlingStore.dispatch({
                     type: SET,
-                    payload: { ...crawlingStore.getState(), item: cpItems },
+                    payload: { ...crawlingStore.getState(), item: newItems },
                 });
-                console.log(cpItems[item.id].company);
+                console.log(newItems[item.id].company);
             }
             // table company
             else {
-                const els = await driver.findElements(
+                const infos = await tryElements(
+                    driver,
                     By.xpath(
                         "//div[contains(@class,'_8ulQk8xi5m')]//tbody//td[contains(@class,'_2jA5rc-8oC')]"
                     )
                 );
-                for await (const prop of Object.keys(item.company)) {
-                    if (index <= 3) {
-                        cpItems[item.id].company[prop] = await els[
-                            index
-                        ].getText();
-                        index++;
-                        continue;
-                    }
-                    const contents = await (
-                        await els[index].getText()
-                    ).split("\n");
-                    const adresAndMail = contents[0].split(" (메일: ");
-                    cpItems[item.id].company["adress"] = adresAndMail[0];
-                    cpItems[item.id].company["mail"] = adresAndMail[1].replace(
-                        ")",
-                        ""
-                    );
-                    cpItems[item.id].company["phone"] = contents[1].replace(
-                        "고객센터: ",
-                        ""
-                    );
-                    break;
-                }
+                const contents = await (await infos[4].getText()).split("\n");
+                const adresAndMail = contents[0].split(" (메일: ");
+
+                const newCompnay = {
+                    title: await infos[0].getText(),
+                    ceo: await infos[1].getText(),
+                    companyNum: +(await infos[2].getText()),
+                    business: await infos[3].getText(),
+                    phone: contents[1].replace("고객센터: ", ""),
+                    mail: adresAndMail[1].replace(")", ""),
+                    adress: adresAndMail[0],
+                };
+                newItems[item.id]["company"] = newCompnay;
                 crawlingStore.dispatch({
                     type: SET,
-                    payload: { ...crawlingStore.getState(), item: cpItems },
+                    payload: { ...crawlingStore.getState(), item: newItems },
                 });
-                console.log(cpItems[item.id].company);
+                console.log(newItems[item.id].company);
             }
         } catch (err) {
             console.log(err);

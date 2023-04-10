@@ -11,11 +11,14 @@ export interface IMajor extends ICategory {
 }
 export interface IMinor extends ICategory {
     majorId: number;
+    majorName: string;
     subId: number[];
 }
 export interface ISub extends ICategory {
     majorId: number;
+    majorName: string;
     minorId: number;
+    minorName: string;
     itemId: number[];
 }
 export interface ICompany {
@@ -29,8 +32,11 @@ export interface ICompany {
 }
 export interface IItem extends ICategory {
     majorId: number;
+    majorName: string;
     minorId: number;
+    minorName: string;
     subId: number;
+    subName: string;
     price: string;
     itemClass: keyof typeof ECompanyClass;
     company?: ICompany;

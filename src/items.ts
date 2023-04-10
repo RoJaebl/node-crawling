@@ -1,5 +1,5 @@
-import { By, WebDriver } from "selenium-webdriver";
-import { CATEGORY_PATH, click, pageScrollTo } from "./crawling.js";
+import { By, Locator, WebDriver, WebElement, until } from "selenium-webdriver";
+import { CATEGORY_PATH, click, pageScrollTo, tryElement } from "./crawling.js";
 import { crawlingStore, IItem, SET } from "./store.js";
 import fs from "fs";
 
@@ -30,102 +30,99 @@ export enum ECompanyClass {
     "프리미엄",
     "플래티넘",
 }
-export const getCategoryItem = async (driver: WebDriver) => {
-    const cpSubs = { ...crawlingStore.getState()["sub"] };
-    for (const [subkey, sub] of Object.entries(cpSubs)) {
-        if (sub.itemId.length > 0) continue;
+
+export const getItems = async (driver: WebDriver) => {
+    const newSubs = { ...crawlingStore.getState()["sub"] };
+    const newItems = {};
+    for (const [subkey, sub] of Object.entries(newSubs)) {
+        if (sub.itemId.length !== 0) continue;
         await driver.get(sub.url);
-        await driver.sleep(500);
-        try {
-            const naverPay = await driver.findElement(propsXPath.naverPay);
-            await click(driver, naverPay);
-        } catch (err) {
-            console.log("카테고리 아이템이 없습니다.", sub.name);
-            continue;
-        }
-        const selectItemNum = await driver.findElement(
-            propsXPath.selectItemNum
+
+        const paypable = await tryElement(driver, propsXPath.naverPay);
+        if (paypable === undefined) continue;
+        const selectable = await tryElement(driver, propsXPath.selectItemNum);
+        await click(driver, paypable);
+        if (selectable === undefined) continue;
+        await click(driver, selectable);
+        const itemNumpable = await tryElement(
+            driver,
+            propsXPath.selectItemNum80
         );
-        await click(driver, selectItemNum);
-        const itemNum = await driver.findElement(propsXPath.selectItemNum80);
-        await click(driver, itemNum);
-        await pageScrollTo(driver, { duration: 200, sleep: 200 });
+        if (itemNumpable === undefined) continue;
+        await click(driver, itemNumpable);
+
+        await pageScrollTo(driver, { duration: 200, sleep: 100 });
+        await driver.wait(until.elementLocated(propsXPath.items), 500);
         const items = await driver.findElements(propsXPath.items);
         let index = 0;
-        let newItem: { [id: number]: IItem } = {};
+        const newItem = {};
         for await (const item of items) {
             index++;
             await driver.sleep(10);
-            const agable = await item.findElement(
+            const apable = await item.findElement(
                 By.xpath(
                     `(//a[contains(@class,'basicList_mall__BC5Xu')])[${index}]`
                 )
             );
-            const url = await agable.getAttribute("href");
-            const itemId = +(await agable
+            const url = await apable.getAttribute("href");
+            const id = +(await apable
                 .getAttribute("data-nclick")
                 .then((value) => {
                     const idStart = value.indexOf("i:") + "i:".length;
                     const idEnd = value.indexOf(",r:");
                     return value.slice(idStart, idEnd);
                 }));
-            let itemClass: keyof typeof ECompanyClass;
-            try {
-                itemClass = (await item
-                    .findElement(
-                        By.xpath(
-                            `(//div[contains(@class,'basicList_mall_grade__1hPzs')])[${index}]//span[contains(@class,'basicList_grade__unbQp')]//img/parent::span`
-                        )
-                    )
-                    .getText()) as keyof typeof ECompanyClass;
-            } catch (err) {
-                continue;
-            }
+            const itemClassable = await tryElement(
+                driver,
+                By.xpath(
+                    `(//div[contains(@class,'basicList_mall_grade__1hPzs')])[${index}]//span[contains(@class,'basicList_grade__unbQp')]//img/parent::span`
+                ),
+                item
+            );
+            if (itemClassable === undefined) continue;
+            const itemClass = await itemClassable.getText();
             if (ECompanyClass[itemClass] < 3 || !url.includes("naver.com"))
                 continue;
-            cpSubs[+subkey].itemId.push(itemId);
-            newItem[itemId] = {
-                id: itemId,
-                name: await item
-                    .findElement(
-                        By.xpath(
-                            `(//div[contains(@class,'basicList_title__VfX3c')])[${index}]`
-                        )
+            const name = await item
+                .findElement(
+                    By.xpath(
+                        `(//div[contains(@class,'basicList_title__VfX3c')])[${index}]`
                     )
-                    .getText(),
-                price: await item
-                    .findElement(
-                        By.xpath(
-                            `(//span[contains(@class,'price_price__LEGN7')])[${index}]`
-                        )
+                )
+                .getText();
+            const price = await item
+                .findElement(
+                    By.xpath(
+                        `(//span[contains(@class,'price_price__LEGN7')])[${index}]`
                     )
-                    .getText(),
+                )
+                .getText();
+            newItem[id] = {
+                id,
+                name,
+                price,
                 url,
                 itemClass,
                 majorId: sub.majorId,
+                majorName: sub.majorName,
                 minorId: sub.minorId,
+                minorName: sub.minorName,
                 subId: +subkey,
-                company: {
-                    title: "",
-                    ceo: "",
-                    companyNum: 0,
-                    business: "",
-                    adress: "",
-                    phone: "",
-                    mail: "",
-                },
+                subName: sub.name,
             } as IItem;
         }
+        Object.assign(newItems, newItem);
+        newSubs[+subkey].itemId.push(...Object.keys(newItem).map((id) => +id));
 
         crawlingStore.dispatch({
             type: SET,
-            payload: Object.assign(
-                crawlingStore.getState(),
-                { sub: { ...cpSubs } },
-                { item: { ...crawlingStore.getState()["item"], ...newItem } }
-            ),
+            payload: {
+                ...crawlingStore.getState(),
+                sub: newSubs,
+                item: newItems,
+            },
         });
-        // write categories data into json file
+
         fs.writeFileSync(
             CATEGORY_PATH,
             JSON.stringify(crawlingStore.getState())
