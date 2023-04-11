@@ -27,14 +27,19 @@ const chromeHeader = {
 // categories data path
 export const CATEGORY_PATH = "categories.json";
 
+interface ITryElementOption {
+    timeout?: number;
+    element?: WebElement;
+}
 export const tryElement = async (
     driver: WebDriver,
     locator: Locator,
-    element?: WebElement
+    option: ITryElementOption = {}
 ): Promise<WebElement | undefined> => {
     try {
-        await driver.wait(until.elementLocated(locator), 100);
-        if (element === undefined) return await driver.findElement(locator);
+        const { timeout, element } = option;
+        await driver.wait(until.elementLocated(locator), timeout ?? 100);
+        if (!element) return await driver.findElement(locator);
         else return await element.findElement(locator);
     } catch (err) {
         return undefined;
@@ -43,11 +48,12 @@ export const tryElement = async (
 export const tryElements = async (
     driver: WebDriver,
     locator: Locator,
-    element?: WebElement
+    option: ITryElementOption = {}
 ): Promise<WebElement[] | undefined> => {
     try {
-        await driver.wait(until.elementLocated(locator), 100);
-        if (element === undefined) return await driver.findElements(locator);
+        const { timeout, element } = option;
+        await driver.wait(until.elementLocated(locator), timeout ?? 100);
+        if (!element) return await driver.findElements(locator);
         else return await element.findElements(locator);
     } catch (err) {
         return undefined;

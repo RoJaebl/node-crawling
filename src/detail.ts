@@ -13,13 +13,13 @@ import { ICompany, SET } from "./store.js";
 export const getDetail = async (driver: WebDriver) => {
     const newItems = { ...crawlingStore.getState()["item"] };
     for await (const [itemKey, item] of Object.entries(newItems)) {
-        if (item.company.title !== "") continue;
+        if (item.company) continue;
         try {
             await driver.get(item.url);
             const url = await driver.getCurrentUrl();
             if (!url.includes(".naver.com")) continue;
             await driver.sleep(100);
-            await pageScrollTo(driver, { duration: 100, sleep: 200 });
+            await pageScrollTo(driver, { duration: 500, sleep: 100 });
             await pageScrollTo(driver, {
                 direction: "horizon",
                 sleep: 100,
@@ -29,20 +29,23 @@ export const getDetail = async (driver: WebDriver) => {
                 driver,
                 By.xpath("//div[contains(@class,'_8ulQk8xi5m')]")
             );
-            let index = 0;
             // normal company
-            if (companyTabbable === undefined) {
+            if (!companyTabbable) {
                 const company = await tryElement(
                     driver,
                     By.xpath("//div[contains(@class,'_2TupsMhDnt')]")
                 );
+                // const company = await driver.findElement(
+                //     By.xpath("//div[contains(@class,'_2TupsMhDnt')]")
+                // );
+                console.log("company", company);
                 await click(driver, company);
                 const infos = await tryElements(
                     driver,
                     By.xpath(
                         "//div[contains(@class,'_1lLY1TyclY')]//span[contains(@class,'_10PxysFyMd')]"
                     ),
-                    company
+                    { element: company }
                 );
 
                 const newCompnay = {

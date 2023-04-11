@@ -1,5 +1,11 @@
 import { By, Locator, WebDriver, WebElement, until } from "selenium-webdriver";
-import { CATEGORY_PATH, click, pageScrollTo, tryElement } from "./crawling.js";
+import {
+    CATEGORY_PATH,
+    click,
+    pageScrollTo,
+    tryElement,
+    tryElements,
+} from "./crawling.js";
 import { crawlingStore, IItem, SET } from "./store.js";
 import fs from "fs";
 
@@ -39,24 +45,25 @@ export const getItems = async (driver: WebDriver) => {
         await driver.get(sub.url);
         await driver.sleep(100);
 
+        const newItem: { [id: number]: IItem } = {};
         const paypable = await tryElement(driver, propsXPath.naverPay);
-        if (paypable === undefined) continue;
-        const selectable = await tryElement(driver, propsXPath.selectItemNum);
         await click(driver, paypable);
-        if (selectable === undefined) continue;
+
+        const selectable = await tryElement(driver, propsXPath.selectItemNum);
         await click(driver, selectable);
+
         const itemNumpable = await tryElement(
             driver,
             propsXPath.selectItemNum80
         );
-        if (itemNumpable === undefined) continue;
         await click(driver, itemNumpable);
 
         await pageScrollTo(driver, { duration: 600, sleep: 100 });
-        await driver.wait(until.elementLocated(propsXPath.items), 500);
-        const items = await driver.findElements(propsXPath.items);
+
         let index = 0;
-        const newItem = {};
+        const items = await tryElements(driver, propsXPath.items, {
+            timeout: 500,
+        });
         for await (const item of items) {
             index++;
             await driver.sleep(10);
@@ -65,15 +72,17 @@ export const getItems = async (driver: WebDriver) => {
                 By.xpath(
                     `(//div[contains(@class,'basicList_mall_grade__1hPzs')])[${index}]//span[contains(@class,'basicList_grade__unbQp')]//img/parent::span`
                 ),
-                item
+                { element: item }
             );
             if (itemClassable === undefined) continue;
             const itemClass = await itemClassable.getText();
             if (ECompanyClass[itemClass] < 3) continue;
-            const apable = await item.findElement(
+            const apable = await tryElement(
+                driver,
                 By.xpath(
                     `(//a[contains(@class,'basicList_mall__BC5Xu')])[${index}]`
-                )
+                ),
+                { element: item }
             );
             const url = await apable.getAttribute("href");
             if (!url.includes("naver.com")) continue;
@@ -84,34 +93,39 @@ export const getItems = async (driver: WebDriver) => {
                     const idEnd = value.indexOf(",r:");
                     return value.slice(idStart, idEnd);
                 }));
-            const name = await item
-                .findElement(
+            const name = await (
+                await tryElement(
+                    driver,
                     By.xpath(
                         `(//div[contains(@class,'basicList_title__VfX3c')])[${index}]`
-                    )
+                    ),
+                    { element: item }
                 )
-                .getText();
-            const price = await item
-                .findElement(
+            ).getText();
+            const price = await (
+                await tryElement(
+                    driver,
                     By.xpath(
                         `(//span[contains(@class,'price_price__LEGN7')])[${index}]`
-                    )
+                    ),
+                    { element: item }
                 )
-                .getText();
+            ).getText();
             newItem[id] = {
                 id,
                 name,
                 price,
                 url,
-                itemClass,
+                itemClass: ECompanyClass[itemClass],
                 majorId: sub.majorId,
                 majorName: sub.majorName,
                 minorId: sub.minorId,
                 minorName: sub.minorName,
                 subId: +subkey,
                 subName: sub.name,
-            } as IItem;
+            };
         }
+
         Object.assign(newItems, newItem);
         if (Object.keys(newItem).length === 0) newSubs[+subkey].itemId.push(0);
         newSubs[+subkey].itemId.push(...Object.keys(newItem).map((id) => +id));
