@@ -50,23 +50,7 @@ const getCategory = async (
         return await getCategory(driver, locator, callback);
     }
 };
-/**
- * get categories data from naver shopping
- * @param {WebDriver} driver
- * @returns {Promise<void>}
- * @description save categories data to store
- * @example
- * await getCategories(driver);
- * const categories = crawlingStore.get(SET.CATEGORIES);
- * console.log(categories);
- * // { major: { [key: number]: IMajor }, minor: { [key: number]: IMinor }, sub: { [key: number]: ISub } }
- * // major: { id: number, name: string, url: string, minorId: number[] }
- * // minor: { id: number, name: string, url: string, majorId: number, subId: number[] }
- * // sub: { id: number, name: string, url: string, minorId: number }
- * // ex) categories.major[1000000].name === "패션의류"
- * // ex) categories.minor[1000001].name === "여성의류"
- * // ex) categories.sub[1000002].name === "여성의류"
- */
+
 export const getCategories = async (driver: WebDriver) => {
     await driver.get("https://shopping.naver.com/");
     await driver.wait(until.elementLocated(propsXPath.categoryButton), 1000);

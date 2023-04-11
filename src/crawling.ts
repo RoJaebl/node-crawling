@@ -61,7 +61,7 @@ export const pageScrollTo = async (
         option.direction ? `return window.scrollX;` : `return window.scrollY;`
     )) as number;
     // scroll to bottom
-    while (true) {
+    for await (const _ of Array(100)) {
         if (option.direction)
             await driver.executeScript(
                 `window.scrollBy({ left: window.screenLeft });`
@@ -78,6 +78,7 @@ export const pageScrollTo = async (
     }
     await driver.sleep(option.sleep ?? 1);
 };
+
 export const hover = async (
     driver: WebDriver,
     origin: WebElement,

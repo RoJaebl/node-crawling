@@ -33,10 +33,11 @@ export enum ECompanyClass {
 
 export const getItems = async (driver: WebDriver) => {
     const newSubs = { ...crawlingStore.getState()["sub"] };
-    const newItems = {};
-    for (const [subkey, sub] of Object.entries(newSubs)) {
+    const newItems = { ...crawlingStore.getState()["item"] };
+    for await (const [subkey, sub] of Object.entries(newSubs)) {
         if (sub.itemId.length !== 0) continue;
         await driver.get(sub.url);
+        await driver.sleep(100);
 
         const paypable = await tryElement(driver, propsXPath.naverPay);
         if (paypable === undefined) continue;
@@ -51,7 +52,7 @@ export const getItems = async (driver: WebDriver) => {
         if (itemNumpable === undefined) continue;
         await click(driver, itemNumpable);
 
-        await pageScrollTo(driver, { duration: 200, sleep: 100 });
+        await pageScrollTo(driver, { duration: 600, sleep: 100 });
         await driver.wait(until.elementLocated(propsXPath.items), 500);
         const items = await driver.findElements(propsXPath.items);
         let index = 0;
@@ -59,19 +60,6 @@ export const getItems = async (driver: WebDriver) => {
         for await (const item of items) {
             index++;
             await driver.sleep(10);
-            const apable = await item.findElement(
-                By.xpath(
-                    `(//a[contains(@class,'basicList_mall__BC5Xu')])[${index}]`
-                )
-            );
-            const url = await apable.getAttribute("href");
-            const id = +(await apable
-                .getAttribute("data-nclick")
-                .then((value) => {
-                    const idStart = value.indexOf("i:") + "i:".length;
-                    const idEnd = value.indexOf(",r:");
-                    return value.slice(idStart, idEnd);
-                }));
             const itemClassable = await tryElement(
                 driver,
                 By.xpath(
@@ -81,8 +69,21 @@ export const getItems = async (driver: WebDriver) => {
             );
             if (itemClassable === undefined) continue;
             const itemClass = await itemClassable.getText();
-            if (ECompanyClass[itemClass] < 3 || !url.includes("naver.com"))
-                continue;
+            if (ECompanyClass[itemClass] < 3) continue;
+            const apable = await item.findElement(
+                By.xpath(
+                    `(//a[contains(@class,'basicList_mall__BC5Xu')])[${index}]`
+                )
+            );
+            const url = await apable.getAttribute("href");
+            if (!url.includes("naver.com")) continue;
+            const id = +(await apable
+                .getAttribute("data-nclick")
+                .then((value) => {
+                    const idStart = value.indexOf("i:") + "i:".length;
+                    const idEnd = value.indexOf(",r:");
+                    return value.slice(idStart, idEnd);
+                }));
             const name = await item
                 .findElement(
                     By.xpath(
@@ -112,6 +113,7 @@ export const getItems = async (driver: WebDriver) => {
             } as IItem;
         }
         Object.assign(newItems, newItem);
+        if (Object.keys(newItem).length === 0) newSubs[+subkey].itemId.push(0);
         newSubs[+subkey].itemId.push(...Object.keys(newItem).map((id) => +id));
 
         crawlingStore.dispatch({
