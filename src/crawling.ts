@@ -145,7 +145,7 @@ const command = async (driver: WebDriver) => {
             );
             jsonToXlsx();
             rl.close();
-            driver.close();
+            driver.quit();
             return;
         }
         if (line === "save" || line === "s") {

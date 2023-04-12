@@ -24,7 +24,7 @@ export interface ISub extends ICategory {
 export interface ICompany {
     title?: string;
     ceo?: string;
-    companyNum?: number;
+    companyNum?: any;
     business?: string;
     adress?: string;
     phone?: string;
