@@ -85,7 +85,12 @@ export const getItems = async (driver: WebDriver) => {
                 { element: item }
             );
             const url = await apable.getAttribute("href");
-            if (!url.includes("naver.com")) continue;
+            if (
+                url.includes("shopping.naver.com") ||
+                (!url.includes("smartstore.naver.com") &&
+                    !url.includes("adcr.naver.com"))
+            )
+                continue;
             const id = +(await apable
                 .getAttribute("data-nclick")
                 .then((value) => {
