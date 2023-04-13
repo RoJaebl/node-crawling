@@ -24,12 +24,15 @@ export const getDetail = async (driver: WebDriver) => {
             console.log("delete", item.id);
             continue;
         }
-        if (item.company) continue;
-
+        if (item.company && item.company.title) continue;
         try {
             await driver.get(item.url);
-            await driver.sleep(100);
-            const url = await driver.getCurrentUrl();
+            let url = await driver.getCurrentUrl();
+            await driver.get(url);
+            // TODO: 아이피 우회하는 링크 타파하는 방법 강구
+            // https://xn--hz2b15nw6b91c77vqrd.com/ip_collect/naver.html?n_keyword=&n_rank=6&n_query=&n_campaign_type=2&n_media=11068&n_final_url=https%3A%2F%2Fsmartstore.naver.com%2Fmain%2Fproducts%2F5780288777&homecode=smip20230321S2019T4560&NaPm=ct%3Dlgeo7c60%7Cci%3D0AG00037y3rynobxp1kL%7Ctr%3Dpla%7Chk%3D5a81c94d4911ee84d76a0286e1cc82342b10b473
+
+            // 외부사이트 연결 아이템 제거
             if (!url.includes(".naver.com")) {
                 delete newItems[itemKey];
                 crawlingStore.dispatch({
@@ -39,11 +42,6 @@ export const getDetail = async (driver: WebDriver) => {
                 console.log("delete", item.id);
                 continue;
             }
-            await pageScrollTo(driver, { duration: 500, sleep: 100 });
-            // await pageScrollTo(driver, {
-            //     direction: "horizon",
-            //     sleep: 100,
-            // });
 
             const companyTabbable = await tryElement(
                 driver,
@@ -51,20 +49,28 @@ export const getDetail = async (driver: WebDriver) => {
             );
             // normal company
             const newCompany: ICompany = {
-                title: "none  ",
+                title: "none",
                 ceo: "none",
-                companyNum: "none ",
-                business: "non",
-                adress: "none ",
-                phone: "none  ",
-                mail: "non",
+                companyNum: "none",
+                business: "none",
+                adress: "none",
+                phone: "none",
+                mail: "none",
             };
             if (!companyTabbable) {
-                const company = await tryElement(
+                let company = await tryElement(
                     driver,
                     By.xpath("//div[contains(@class,'_2TupsMhDnt')]")
                 );
-                await click(driver, company);
+
+                try {
+                    await driver.executeScript(
+                        `const company = document.getElementsByClassName("_2TupsMhDnt");
+                        company[0].children[0].click();`
+                    );
+                } catch {
+                    throw new Error(`company click error : ${item}`);
+                }
                 const infos = await tryElements(
                     driver,
                     By.xpath(
@@ -92,7 +98,7 @@ export const getDetail = async (driver: WebDriver) => {
                             companyInfo["companyNum"] = text;
                         else if (infoTag.includes("통신판매"))
                             companyInfo["business"] = text;
-                        else if (infoTag.includes("소새지"))
+                        else if (infoTag.includes("소재지"))
                             companyInfo["adress"] = text;
                         else if (infoTag.includes("고객센터"))
                             companyInfo["phone"] = text;
@@ -135,6 +141,7 @@ export const getDetail = async (driver: WebDriver) => {
                     JSON.stringify(crawlingStore.getState())
                 );
         } catch (err) {
+            if (!driver) break;
             console.log(err);
         }
     }

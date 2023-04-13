@@ -27,6 +27,10 @@ const chromeHeader = {
 // categories data path
 export const CATEGORY_PATH = "categories.json";
 
+interface ISeleniumOption {
+    duration?: number;
+    sleep?: number;
+}
 interface ITryElementOption {
     timeout?: number;
     element?: WebElement;
@@ -42,6 +46,7 @@ export const tryElement = async (
         if (!element) return await driver.findElement(locator);
         else return await element.findElement(locator);
     } catch (err) {
+        console.log("not found element: ", locator.toString());
         return undefined;
     }
 };
@@ -56,33 +61,36 @@ export const tryElements = async (
         if (!element) return await driver.findElements(locator);
         else return await element.findElements(locator);
     } catch (err) {
+        console.log("not found elements:", locator.toString());
         return undefined;
     }
 };
+interface IPageScrollToOption extends ISeleniumOption {
+    direction?: "horizon";
+}
 export const pageScrollTo = async (
     driver: WebDriver,
-    option?: { duration?: number; sleep?: number; direction?: "horizon" }
+    option: IPageScrollToOption = {}
 ) => {
+    const { duration, sleep, direction } = option;
     let oldDirect = (await driver.executeScript(
-        option.direction ? `return window.scrollX;` : `return window.scrollY;`
+        direction ? `return window.scrollX;` : `return window.scrollY;`
     )) as number;
     // scroll to bottom
     for await (const _ of Array(100)) {
-        if (option.direction)
+        if (direction)
             await driver.executeScript(
                 `window.scrollBy({ left: window.screenLeft });`
             );
         else await driver.findElement(By.xpath("//body")).sendKeys(Key.END);
-        await driver.sleep(option.duration ?? 1);
+        await driver.sleep(duration ?? 1);
         const newDirect = (await driver.executeScript(
-            option.direction
-                ? `return window.scrollX;`
-                : `return window.scrollY;`
+            direction ? `return window.scrollX;` : `return window.scrollY;`
         )) as number;
         if (oldDirect === newDirect) break;
         oldDirect = newDirect;
     }
-    await driver.sleep(option.sleep ?? 1);
+    await driver.sleep(sleep ?? 1);
 };
 
 export const hover = async (
@@ -96,15 +104,17 @@ export const hover = async (
     if (!options) return;
     await driver.sleep(options.sleep);
 };
+
 export const click = async (
     driver: WebDriver,
     origin: WebElement,
-    options?: { sleep?: number }
+    options: ISeleniumOption = {}
 ) => {
+    const { duration, sleep } = options;
     const actor = await driver.actions({ async: true });
-    await actor.move({ duration: 1, origin }).click().perform();
+    await actor.move({ duration, origin }).click().perform();
     await actor.clear();
-    if (options) await driver.sleep(options.sleep ?? 1);
+    await driver.sleep(sleep ?? 1);
 };
 const getDriver = async (
     browser: string,
@@ -145,6 +155,7 @@ const command = async (driver: WebDriver) => {
             );
             jsonToXlsx();
             rl.close();
+            driver.execute("window.close();" as any);
             driver.quit();
             return;
         }
