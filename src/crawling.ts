@@ -10,7 +10,7 @@ import {
 import * as chrome from "selenium-webdriver/chrome.js";
 import fs from "fs";
 import XLSX from "xlsx";
-import { crawlingStore, ICrawlingStore, SET } from "./store.js";
+import { crawlingStore, ICrawlingStore, IItem, SET } from "./store.js";
 import readline from "readline";
 import { getCategories } from "./categories.js";
 import { getItems } from "./items.js";
@@ -153,7 +153,7 @@ const command = async (driver: WebDriver) => {
                 CATEGORY_PATH,
                 JSON.stringify(crawlingStore.getState())
             );
-            jsonToXlsx();
+            jsonToXlsx(CATEGORY_PATH, "data.xlsx");
             rl.close();
             driver.execute("window.close();" as any);
             driver.quit();
@@ -166,7 +166,7 @@ const command = async (driver: WebDriver) => {
             );
         }
         if (line === "xlsx" || line === "x") {
-            jsonToXlsx();
+            jsonToXlsx(CATEGORY_PATH, "data.xlsx");
         }
     });
 };
@@ -174,10 +174,10 @@ const addSheet = <T>(workbook: XLSX.WorkBook, name: string, data: T[]) => {
     const worksheet = XLSX.utils.json_to_sheet(data);
     XLSX.utils.book_append_sheet(workbook, worksheet, name);
 };
-const jsonToXlsx = () => {
+const jsonToXlsx = (jsonPath: string, xlsxPath: string) => {
     // read json
     const json = JSON.parse(
-        fs.readFileSync(CATEGORY_PATH).toString("utf-8")
+        fs.readFileSync(jsonPath).toString("utf-8")
     ) as ICrawlingStore;
     // item reformat
     const itemsArr = Object.entries(json["item"]).map(
@@ -201,7 +201,7 @@ const jsonToXlsx = () => {
     addSheet(workbook, "item categories", Object.values(newItems));
     // write file
     fs.writeFileSync(
-        "data.xlsx",
+        xlsxPath,
         XLSX.write(workbook, {
             bookType: "xlsx",
             type: "buffer",
@@ -231,7 +231,7 @@ const run = async () => {
         // get company detail
         await getDetail(driver);
         // get item name
-        jsonToXlsx();
+        jsonToXlsx(CATEGORY_PATH, "data.xlsx");
         // close driver
         await driver.quit();
     } catch (err) {
@@ -240,6 +240,32 @@ const run = async () => {
     }
 };
 run();
+
+// Item company duplicate filter
+const itemCompanyFilter = () => {
+    const cpCategory = { ...crawlingStore.getState() };
+    const newItem: { [id: number]: IItem } = {};
+    const map = new Map<string, IItem>();
+    for (const item of Object.values(cpCategory["item"])) {
+        if (!item.company) continue;
+        map.set(item.company.mail, item);
+    }
+    const iterator = map.values();
+    while (true) {
+        const item = iterator.next().value;
+        if (!item) break;
+        newItem[item.id] = item;
+    }
+    crawlingStore.dispatch({
+        type: SET,
+        payload: { ...cpCategory, item: newItem },
+    });
+    fs.writeFileSync(
+        "filterItems.json",
+        JSON.stringify(crawlingStore.getState())
+    );
+    jsonToXlsx("filterItems.json", "filterdata.xlsx");
+};
 
 // get array to object
 const arrayToObject = (array: any[], keyField: string) => {
@@ -293,7 +319,7 @@ const getItemName = async (driver: WebDriver) => {
         }
     }
     fs.writeFileSync(CATEGORY_PATH, JSON.stringify(crawlingStore.getState()));
-    jsonToXlsx();
+    jsonToXlsx(CATEGORY_PATH, "data.xlsx");
 };
 
 // interface IXlsx extends IItem, ICompany {}
@@ -341,4 +367,4 @@ const getItemName = async (driver: WebDriver) => {
 //     CATEGORY_PATH,
 //     JSON.stringify({ ...crawlingStore.getState(), item: newItems })
 // );
-// jsonToXlsx();
+// jsonToXlsx(CATEGORY_PATH, "data.xlsx");
