@@ -48,7 +48,15 @@ export interface ICrawlingStore {
     item: { [id: number]: IItem };
 }
 export const SET = "SET";
-
+export const getItems = () => crawlingStore.getState().item;
+export const itemsAction = (items: { [id: number]: IItem }) => ({
+    type: SET,
+    payload: { ...crawlingStore.getState(), item: items },
+});
+export const itemAction = (item: IItem) => ({
+    type: SET,
+    payload: { ...crawlingStore.getState(), item: { [item.id]: item } },
+});
 const reducer: Reducer<ICrawlingStore> = (
     state: ICrawlingStore = { major: {}, minor: {}, sub: {}, item: {} },
     { type, payload }: { type: string; payload: ICrawlingStore }

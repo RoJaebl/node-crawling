@@ -75,7 +75,8 @@ export const getItems = async (driver: WebDriver) => {
                 { element: item }
             );
             if (itemClassable === undefined) continue;
-            const itemClass = await itemClassable.getText();
+            const itemClass =
+                (await itemClassable.getText()) as keyof typeof ECompanyClass;
             if (ECompanyClass[itemClass] < 3) continue;
             const apable = await tryElement(
                 driver,
@@ -121,7 +122,7 @@ export const getItems = async (driver: WebDriver) => {
                 name,
                 price,
                 url,
-                itemClass: ECompanyClass[itemClass],
+                itemClass,
                 majorId: sub.majorId,
                 majorName: sub.majorName,
                 minorId: sub.minorId,

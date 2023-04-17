@@ -10,11 +10,19 @@ import {
 import * as chrome from "selenium-webdriver/chrome.js";
 import fs from "fs";
 import XLSX from "xlsx";
-import { crawlingStore, ICrawlingStore, IItem, SET } from "./store.js";
+import {
+    crawlingStore,
+    ICategory,
+    ICrawlingStore,
+    IItem,
+    itemsAction,
+    SET,
+} from "./store.js";
 import readline from "readline";
 import { getCategories } from "./categories.js";
 import { getItems } from "./items.js";
 import { getDetail } from "./detail.js";
+import { ECompanyClass } from "./items.js";
 
 const edgeHeader = {
     userAgent:
@@ -116,7 +124,7 @@ export const click = async (
     await actor.clear();
     await driver.sleep(sleep ?? 1);
 };
-const getDriver = async (
+export const getDriver = async (
     browser: string,
     binaryPath: string
 ): Promise<WebDriver | undefined> => {
@@ -240,6 +248,59 @@ const run = async () => {
     }
 };
 run();
+const emptyIgnore = () => {
+    crawlingStore.dispatch({
+        type: SET,
+        payload: onpenJson(CATEGORY_PATH),
+    });
+    const cpItem = { ...crawlingStore.getState().item };
+    const newItem = Object.values(cpItem).reduce((acc, cur) => {
+        if (cur.company && cur.company.title !== "") acc[cur.id] = cur;
+        return acc;
+    }, {});
+    crawlingStore.dispatch({
+        type: SET,
+        payload: { ...crawlingStore.getState(), item: newItem },
+    });
+    saveJson("ignore.json");
+    jsonToXlsx("ignore.json", "ignore.xlsx");
+};
+// open json file
+const onpenJson = (path: string) =>
+    JSON.parse(fs.readFileSync(path).toString());
+// save json file
+const saveJson = (path: string) =>
+    fs.writeFileSync(path, JSON.stringify(crawlingStore.getState()));
+// try number
+const tryNum = (str: string): number | undefined => {
+    const tryNum = parseFloat(str);
+    if (!isNaN(tryNum) && isFinite(tryNum)) return tryNum;
+    return undefined;
+};
+// convert company class
+const classConverte = () => {
+    crawlingStore.dispatch({
+        type: SET,
+        payload: onpenJson(CATEGORY_PATH),
+    });
+    const cpItem = { ...crawlingStore.getState().item };
+    const newItem = Object.values(cpItem).reduce((acc, cur) => {
+        const enumNum = tryNum(cur.itemClass);
+        if (typeof enumNum === "number")
+            acc[cur.id] = {
+                ...cur,
+                itemClass: ECompanyClass[enumNum] as keyof typeof ECompanyClass,
+            };
+        else acc[cur.id] = cur;
+        return acc;
+    }, {});
+    crawlingStore.dispatch({
+        type: SET,
+        payload: { ...crawlingStore.getState(), item: newItem },
+    });
+    saveJson("renameClass.json");
+    jsonToXlsx("renameClass.json", "renameClass.xlsx");
+};
 
 // Item company duplicate filter
 const itemCompanyFilter = () => {
@@ -256,15 +317,9 @@ const itemCompanyFilter = () => {
         if (!item) break;
         newItem[item.id] = item;
     }
-    crawlingStore.dispatch({
-        type: SET,
-        payload: { ...cpCategory, item: newItem },
-    });
-    fs.writeFileSync(
-        "filterItems.json",
-        JSON.stringify(crawlingStore.getState())
-    );
-    jsonToXlsx("filterItems.json", "filterdata.xlsx");
+    crawlingStore.dispatch(itemsAction(newItem));
+    saveJson("filterItems.json");
+    jsonToXlsx("filterItems.json", "filterItems.xlsx");
 };
 
 // get array to object
