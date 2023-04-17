@@ -6,7 +6,9 @@
         "lib": ["dom", "dom.iterable", "ESNext"],
         "sourceMap": true,
         "moduleResolution": "node",
-        "esModuleInterop": true
+        "esModuleInterop": true,
+        "skipLibCheck": true,
+        "forceConsistentCasingInFileNames": true
         // "allowJs": true,
         // "skipLibCheck": true,
         // "allowSyntheticDefaultImports": true,
@@ -20,6 +22,6 @@
         // "removeComments": true,
         // "preserveConstEnums": true
     },
-    "include": ["src/**/*"],
+    "include": ["src/**/*", "example/categoriesScript.ts"],
     "exclude": ["node_modules"]
 }

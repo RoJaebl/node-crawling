@@ -4,6 +4,7 @@
     "description": "",
     "type": "module",
     "scripts": {
+        "gulp:build": "gulp build",
         "build": "tsc",
         "clean": "tsc --build --clean",
         "start": "node build/crawling.js",
@@ -37,6 +38,8 @@
         "@types/redux": "^3.6.0",
         "@types/selenium-webdriver": "^4.1.13",
         "@types/xlsx": "^0.0.36",
+        "gulp": "^4.0.2",
+        "gulp-typescript": "^6.0.0-alpha.1",
         "ts-jest": "^29.1.0",
         "typescript": "^5.0.2"
     }
