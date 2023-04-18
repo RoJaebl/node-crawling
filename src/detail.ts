@@ -7,7 +7,7 @@ import {
     pageScrollTo,
     tryElement,
     tryElements,
-} from "./crawling.js";
+} from "./index.js";
 import { ICompany, SET } from "./store.js";
 
 export const getDetail = async (driver: WebDriver) => {

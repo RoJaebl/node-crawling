@@ -7,7 +7,7 @@
         "gulp:build": "gulp build",
         "build": "tsc",
         "clean": "tsc --build --clean",
-        "start": "node build/crawling.js",
+        "start": "node build/index.js",
         "start:scraper": "nodemon --exec babel-node ./src/scraper.ts --delay 2",
         "start:crawling": "nodemon --exec babel-node ./src/crawling.ts --delay 2",
         "test:e2e": "jest"

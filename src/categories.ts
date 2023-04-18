@@ -9,7 +9,7 @@ import {
     IMinor,
     ISub,
 } from "./store.js";
-import { CATEGORY_PATH, hover } from "./crawling.js";
+import { CATEGORY_PATH, hover } from "./index.js";
 
 interface ICategoryInfo {
     id: number;

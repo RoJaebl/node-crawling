@@ -5,7 +5,7 @@ import {
     pageScrollTo,
     tryElement,
     tryElements,
-} from "./crawling.js";
+} from "./index.js";
 import { crawlingStore, IItem, SET } from "./store.js";
 import fs from "fs";
 
