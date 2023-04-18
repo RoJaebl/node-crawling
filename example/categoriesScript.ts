@@ -4,23 +4,23 @@ interface ICategoryInfo {
     url: string;
     element: Element;
 }
-const findElementsXPath = (xPath: string) => {
-    const result = [];
-    const iterator = document.evaluate(
-        xPath,
-        document,
-        null,
-        XPathResult.ORDERED_NODE_ITERATOR_TYPE,
-        null
-    );
+// const findElementsXPath = (xPath: string) => {
+//     const result = [];
+//     const iterator = document.evaluate(
+//         xPath,
+//         document,
+//         null,
+//         XPathResult.ORDERED_NODE_ITERATOR_TYPE,
+//         null
+//     );
 
-    let curNode = iterator.iterateNext();
-    while (curNode) {
-        result.push(curNode);
-        curNode = iterator.iterateNext();
-    }
-    return result;
-};
+//     let curNode = iterator.iterateNext();
+//     while (curNode) {
+//         result.push(curNode);
+//         curNode = iterator.iterateNext();
+//     }
+//     return result;
+// };
 const delay = (ms: number): Promise<void> =>
     new Promise((resolve) => setTimeout(resolve, ms));
 const hover = (hoverOver, element) => {

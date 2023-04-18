@@ -234,14 +234,14 @@ const run = async () => {
                 payload: JSON.parse(fs.readFileSync(CATEGORY_PATH).toString()),
             });
 
-        // // get category item
-        // await getItems(driver);
-        // // get company detail
-        // await getDetail(driver);
-        // // get item name
-        // jsonToXlsx(CATEGORY_PATH, "data.xlsx");
-        // // close driver
-        // await driver.quit();
+        // get category item
+        await getItems(driver);
+        // get company detail
+        await getDetail(driver);
+        // get item name
+        jsonToXlsx(CATEGORY_PATH, "data.xlsx");
+        // close driver
+        await driver.quit();
     } catch (err) {
         console.log(err);
         await driver.quit();

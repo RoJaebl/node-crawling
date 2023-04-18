@@ -22,6 +22,6 @@
         // "removeComments": true,
         // "preserveConstEnums": true
     },
-    "include": ["src/**/*", "example/categoriesScript.ts"],
+    "include": ["src/**/*"],
     "exclude": ["node_modules"]
 }

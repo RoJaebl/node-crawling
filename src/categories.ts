@@ -17,8 +17,8 @@ interface ICategoryInfo {
     url: string;
     element: WebElement;
 }
-
-const findElements = (className: string) => {
+const findElementsScript = (className: string) => `
+const findElements = (className) => {
     const container = document.getElementsByClassName(className)[0];
     try {
         const list = Object.values(container.querySelectorAll("li"));
@@ -34,17 +34,18 @@ const findElements = (className: string) => {
         return {};
     }
 };
-
+return findElements("${className}");
+`;
 export const getCategories = async (driver: WebDriver) => {
     await driver.get("https://shopping.naver.com/");
     await driver.executeScript(`
-        document.getElementsByClassName("_categoryButton_category_3_5ml")[0].click();
+    document.getElementsByClassName("_categoryButton_category_3_5ml")[0].click();
     `);
     await driver.sleep(100);
 
     const majors = Object.values(
         (await driver.executeScript(
-            `(${findElements("_categoryLayer_main_category_2A7mb")})()`
+            findElementsScript("_categoryLayer_main_category_2A7mb")
         )) as ICategoryInfo[]
     );
     const newMajor: { [key: number]: IMajor } = majors.reduce(
@@ -58,7 +59,7 @@ export const getCategories = async (driver: WebDriver) => {
         await hover(driver, major.element);
         const minors = Object.values(
             (await driver.executeScript(
-                `(${findElements("_categoryLayer_middle_category_2g2zY")})()`
+                findElementsScript("_categoryLayer_middle_category_2g2zY")
             )) as ICategoryInfo[]
         );
         const newMinor: { [key: number]: IMinor } = minors.reduce(
@@ -76,10 +77,10 @@ export const getCategories = async (driver: WebDriver) => {
             {}
         );
         for await (const minor of minors) {
-            await hover(driver, minor.element, { sleep: 200 });
-            const newSub: { [key: number]: ISub } = (
+            await hover(driver, minor.element, { sleep: 150 });
+            const newSub: { [key: number]: ISub } = Object.values(
                 (await driver.executeScript(
-                    `(${findElements("_categoryLayer_subclass_1K649")})()`
+                    findElementsScript("_categoryLayer_subclass_1K649")
                 )) as ICategoryInfo[]
             ).reduce((newSub, { id, name, url }) => {
                 newSub[id] = {
@@ -103,6 +104,10 @@ export const getCategories = async (driver: WebDriver) => {
         newMajor[major.id].minorId.push(...minorIds);
         crawlingStore.dispatch(addMajorAction(newMajor));
     }
+    console.log(
+        "sub length: ",
+        Object.keys(crawlingStore.getState().sub).length
+    );
     // write categories data into json file
     fs.writeFileSync(CATEGORY_PATH, JSON.stringify(crawlingStore.getState()));
 };
