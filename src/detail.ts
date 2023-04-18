@@ -1,8 +1,13 @@
 import { By } from "selenium-webdriver";
 import fs from "fs";
-import { crawlingStore, driverStore } from "./store.js";
+import {
+    addItemAction,
+    crawlingStore,
+    driverStore,
+    setItemAction,
+} from "./store.js";
 import { CATEGORY_PATH, tryElement, tryElements } from "./index.js";
-import { ICompany, SET } from "./store.js";
+import { ICompany } from "./store.js";
 
 export const getDetail = async () => {
     const driver = driverStore.getState();
@@ -12,10 +17,7 @@ export const getDetail = async () => {
     for await (const [itemKey, item] of Object.entries(newItems)) {
         if (item.url.includes("shopping.naver.com")) {
             delete newItems[itemKey];
-            crawlingStore.dispatch({
-                type: SET,
-                payload: { ...crawlingStore.getState(), item: newItems },
-            });
+            crawlingStore.dispatch(setItemAction(newItems));
             console.log("delete", item.id);
             continue;
         }
@@ -30,10 +32,7 @@ export const getDetail = async () => {
             // 외부사이트 연결 아이템 제거
             if (!url.includes(".naver.com")) {
                 delete newItems[itemKey];
-                crawlingStore.dispatch({
-                    type: SET,
-                    payload: { ...crawlingStore.getState(), item: newItems },
-                });
+                crawlingStore.dispatch(setItemAction(newItems));
                 console.log("delete", item.id);
                 continue;
             }
@@ -125,10 +124,7 @@ export const getDetail = async () => {
                 });
             }
             newItems[item.id].company = newCompany;
-            crawlingStore.dispatch({
-                type: SET,
-                payload: { ...crawlingStore.getState(), item: newItems },
-            });
+            crawlingStore.dispatch(setItemAction(newItems));
             console.log(newItems[item.id].company);
             if (saveCount % standardSaveCount === 0)
                 fs.writeFileSync(

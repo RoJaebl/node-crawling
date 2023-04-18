@@ -6,7 +6,13 @@ import {
     tryElement,
     tryElements,
 } from "./index.js";
-import { crawlingStore, driverStore, IItem, SET } from "./store.js";
+import {
+    addItemAction,
+    crawlingStore,
+    driverStore,
+    IItem,
+    setSubAction,
+} from "./store.js";
 import fs from "fs";
 
 const propsXPath = {
@@ -137,14 +143,8 @@ export const getItems = async () => {
         if (Object.keys(newItem).length === 0) newSubs[+subkey].itemId.push(0);
         newSubs[+subkey].itemId.push(...Object.keys(newItem).map((id) => +id));
 
-        crawlingStore.dispatch({
-            type: SET,
-            payload: {
-                ...crawlingStore.getState(),
-                sub: newSubs,
-                item: newItems,
-            },
-        });
+        crawlingStore.dispatch(setSubAction(newSubs));
+        crawlingStore.dispatch(addItemAction(newItems));
 
         fs.writeFileSync(
             CATEGORY_PATH,

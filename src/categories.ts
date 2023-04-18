@@ -44,12 +44,11 @@ export const getCategories = async () => {
     document.getElementsByClassName("_categoryButton_category_3_5ml")[0].click();
     `);
     await driver.sleep(100);
-
     const majors = Object.values(
-        (await driver.executeScript(
+        await driver.executeScript(
             findElementsScript("_categoryLayer_main_category_2A7mb")
-        )) as ICategoryInfo[]
-    );
+        )
+    ) as ICategoryInfo[];
     const newMajor: { [key: number]: IMajor } = majors.reduce(
         (newMajor, { id, name, url }) => {
             newMajor[id] = { id, name, url, minorId: [] };
@@ -60,10 +59,10 @@ export const getCategories = async () => {
     for await (const major of majors) {
         await hover(driver, major.element);
         const minors = Object.values(
-            (await driver.executeScript(
+            await driver.executeScript(
                 findElementsScript("_categoryLayer_middle_category_2g2zY")
-            )) as ICategoryInfo[]
-        );
+            )
+        ) as ICategoryInfo[];
         const newMinor: { [key: number]: IMinor } = minors.reduce(
             (newMinor, { id, name, url }) => {
                 newMinor[id] = {
@@ -79,11 +78,13 @@ export const getCategories = async () => {
             {}
         );
         for await (const minor of minors) {
-            await hover(driver, minor.element, { sleep: 150 });
-            const newSub: { [key: number]: ISub } = Object.values(
-                (await driver.executeScript(
-                    findElementsScript("_categoryLayer_subclass_1K649")
-                )) as ICategoryInfo[]
+            await hover(driver, minor.element, { sleep: 200 });
+            const newSub: { [key: number]: ISub } = (
+                Object.values(
+                    await driver.executeScript(
+                        findElementsScript("_categoryLayer_subclass_1K649")
+                    )
+                ) as ICategoryInfo[]
             ).reduce((newSub, { id, name, url }) => {
                 newSub[id] = {
                     id,

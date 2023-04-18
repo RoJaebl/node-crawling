@@ -16,7 +16,7 @@ import {
     getDriver,
     ICrawlingStore,
     IItem,
-    SET,
+    setCrawlingAction,
     setDriverAction,
 } from "./store.js";
 import readline from "readline";
@@ -210,12 +210,7 @@ const run = async () => {
         if (!isfileExist(CATEGORY_PATH) || !fs.statSync(CATEGORY_PATH).size)
             await getCategories();
         // write categories data into store
-        else
-            crawlingStore.dispatch({
-                type: SET,
-                payload: JSON.parse(fs.readFileSync(CATEGORY_PATH).toString()),
-            });
-
+        else crawlingStore.dispatch(setCrawlingAction(openJson(CATEGORY_PATH)));
         // get category item
         await getItems();
         // get company detail
@@ -231,24 +226,18 @@ const run = async () => {
 };
 run();
 const emptyIgnore = () => {
-    crawlingStore.dispatch({
-        type: SET,
-        payload: onpenJson(CATEGORY_PATH),
-    });
+    crawlingStore.dispatch(setCrawlingAction(openJson(CATEGORY_PATH)));
     const cpItem = { ...crawlingStore.getState().item };
     const newItem = Object.values(cpItem).reduce((acc, cur) => {
         if (cur.company && cur.company.title !== "") acc[cur.id] = cur;
         return acc;
     }, {});
-    crawlingStore.dispatch({
-        type: SET,
-        payload: { ...crawlingStore.getState(), item: newItem },
-    });
+    crawlingStore.dispatch(addItemAction(newItem));
     saveJson("ignore.json");
     jsonToXlsx("ignore.json", "ignore.xlsx");
 };
 // open json file
-const onpenJson = (path: string) =>
+const openJson = <T>(path: string): T =>
     JSON.parse(fs.readFileSync(path).toString());
 // save json file
 const saveJson = (path: string) =>
@@ -261,10 +250,7 @@ const tryNum = (str: string): number | undefined => {
 };
 // convert company class
 const classConverte = () => {
-    crawlingStore.dispatch({
-        type: SET,
-        payload: onpenJson(CATEGORY_PATH),
-    });
+    crawlingStore.dispatch(setCrawlingAction(openJson(CATEGORY_PATH)));
     const cpItem = { ...crawlingStore.getState().item };
     const newItem = Object.values(cpItem).reduce((acc, cur) => {
         const enumNum = tryNum(cur.itemClass);
@@ -276,10 +262,8 @@ const classConverte = () => {
         else acc[cur.id] = cur;
         return acc;
     }, {});
-    crawlingStore.dispatch({
-        type: SET,
-        payload: { ...crawlingStore.getState(), item: newItem },
-    });
+    crawlingStore.dispatch(addItemAction(newItem));
+
     saveJson("renameClass.json");
     jsonToXlsx("renameClass.json", "renameClass.xlsx");
 };
@@ -347,10 +331,7 @@ const getItemName = async (driver: WebDriver) => {
                 .findElement(By.xpath("//h3[contains(@class,'_22kNQuEXmb')]"))
                 .getText();
             cpItems[item.id] = { ...item, name };
-            crawlingStore.dispatch({
-                type: SET,
-                payload: { ...crawlingStore.getState(), item: cpItems },
-            });
+            crawlingStore.dispatch(addItemAction(cpItems));
         } catch (err) {
             console.log(err);
         }
