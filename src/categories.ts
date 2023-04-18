@@ -1,10 +1,11 @@
 import fs from "fs";
-import { WebDriver, WebElement } from "selenium-webdriver";
+import { WebElement } from "selenium-webdriver";
 import {
     addMajorAction,
     addMinorAction,
     addSubAction,
     crawlingStore,
+    driverStore,
     IMajor,
     IMinor,
     ISub,
@@ -36,7 +37,8 @@ const findElements = (className) => {
 };
 return findElements("${className}");
 `;
-export const getCategories = async (driver: WebDriver) => {
+export const getCategories = async () => {
+    const driver = driverStore.getState();
     await driver.get("https://shopping.naver.com/");
     await driver.executeScript(`
     document.getElementsByClassName("_categoryButton_category_3_5ml")[0].click();

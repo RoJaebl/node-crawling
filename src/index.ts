@@ -1,22 +1,23 @@
 import {
     By,
-    Builder,
     WebDriver,
     WebElement,
     Key,
     until,
     Locator,
 } from "selenium-webdriver";
-import * as chrome from "selenium-webdriver/chrome.js";
 import fs from "fs";
 import XLSX from "xlsx";
 import {
     addItemAction,
+    chromeHeader,
     crawlingStore,
-    ICategory,
+    driverStore,
+    getDriver,
     ICrawlingStore,
     IItem,
     SET,
+    setDriverAction,
 } from "./store.js";
 import readline from "readline";
 import { getCategories } from "./categories.js";
@@ -24,14 +25,6 @@ import { getItems } from "./items.js";
 import { getDetail } from "./detail.js";
 import { ECompanyClass } from "./items.js";
 
-const edgeHeader = {
-    userAgent:
-        "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/70.0.3538.102 Safari/537.36 Edge/18.19582",
-};
-const chromeHeader = {
-    userAgent:
-        "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/104.0.5112.79 Safari/537.36",
-};
 // categories data path
 export const CATEGORY_PATH = "categories.json";
 
@@ -124,24 +117,7 @@ export const click = async (
     await actor.clear();
     await driver.sleep(sleep ?? 1);
 };
-export const getDriver = async (
-    browser: string,
-    binaryPath: string
-): Promise<WebDriver | undefined> => {
-    try {
-        const option = new chrome.Options();
-        option.setChromeBinaryPath(binaryPath);
-        const driver = await new Builder()
-            .forBrowser(browser)
-            .usingHttpAgent(chromeHeader.userAgent)
-            .setChromeOptions(option)
-            .build();
-        return driver;
-    } catch (err) {
-        console.log("not create driver");
-        return undefined;
-    }
-};
+
 const isfileExist = (path: string) => {
     try {
         fs.accessSync(path, fs.constants.F_OK);
@@ -150,7 +126,8 @@ const isfileExist = (path: string) => {
         return false;
     }
 };
-const command = async (driver: WebDriver) => {
+const command = async () => {
+    const driver = driverStore.getState();
     const rl = readline.createInterface({
         input: process.stdin,
         output: process.stdout,
@@ -218,15 +195,20 @@ const jsonToXlsx = (jsonPath: string, xlsxPath: string) => {
 };
 // run
 const run = async () => {
+    driverStore.dispatch(
+        setDriverAction(
+            getDriver("chrome", "/usr/bin/google-chrome", chromeHeader)
+        )
+    );
     // get driver
-    const driver = await getDriver("chrome", "/usr/bin/google-chrome");
+    const driver = driverStore.getState();
     if (driver === undefined) return;
     // console command
-    command(driver);
+    command();
     try {
         // get categories data
         if (!isfileExist(CATEGORY_PATH) || !fs.statSync(CATEGORY_PATH).size)
-            await getCategories(driver);
+            await getCategories();
         // write categories data into store
         else
             crawlingStore.dispatch({
@@ -235,9 +217,9 @@ const run = async () => {
             });
 
         // get category item
-        await getItems(driver);
+        await getItems();
         // get company detail
-        await getDetail(driver);
+        await getDetail();
         // get item name
         jsonToXlsx(CATEGORY_PATH, "data.xlsx");
         // close driver

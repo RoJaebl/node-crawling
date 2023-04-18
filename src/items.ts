@@ -1,4 +1,4 @@
-import { By, Locator, WebDriver, WebElement, until } from "selenium-webdriver";
+import { By } from "selenium-webdriver";
 import {
     CATEGORY_PATH,
     click,
@@ -6,7 +6,7 @@ import {
     tryElement,
     tryElements,
 } from "./index.js";
-import { crawlingStore, IItem, SET } from "./store.js";
+import { crawlingStore, driverStore, IItem, SET } from "./store.js";
 import fs from "fs";
 
 const propsXPath = {
@@ -37,7 +37,8 @@ export enum ECompanyClass {
     "플래티넘",
 }
 
-export const getItems = async (driver: WebDriver) => {
+export const getItems = async () => {
+    const driver = driverStore.getState();
     const newSubs = { ...crawlingStore.getState()["sub"] };
     const newItems = { ...crawlingStore.getState()["item"] };
     for await (const [subkey, sub] of Object.entries(newSubs)) {

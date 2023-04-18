@@ -1,16 +1,11 @@
-import { By, WebDriver } from "selenium-webdriver";
+import { By } from "selenium-webdriver";
 import fs from "fs";
-import { crawlingStore } from "./store.js";
-import {
-    CATEGORY_PATH,
-    click,
-    pageScrollTo,
-    tryElement,
-    tryElements,
-} from "./index.js";
+import { crawlingStore, driverStore } from "./store.js";
+import { CATEGORY_PATH, tryElement, tryElements } from "./index.js";
 import { ICompany, SET } from "./store.js";
 
-export const getDetail = async (driver: WebDriver) => {
+export const getDetail = async () => {
+    const driver = driverStore.getState();
     const newItems = { ...crawlingStore.getState()["item"] };
     const saveCount = 0;
     const standardSaveCount = 100;

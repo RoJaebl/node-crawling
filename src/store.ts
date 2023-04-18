@@ -89,3 +89,48 @@ const reducer: Reducer<ICrawlingStore> = (
     }
 };
 export const crawlingStore = createStore(reducer);
+
+import * as chrome from "selenium-webdriver/chrome.js";
+import { Builder, WebDriver } from "selenium-webdriver";
+
+export const edgeHeader =
+    "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/70.0.3538.102 Safari/537.36 Edge/18.19582";
+export const chromeHeader =
+    "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/104.0.5112.79 Safari/537.36";
+
+export const getDriver = (
+    browser: string,
+    binaryPath: string,
+    browserHeader: string
+): WebDriver | undefined => {
+    try {
+        const option = new chrome.Options();
+        option.setChromeBinaryPath(binaryPath);
+        const driver = new Builder()
+            .forBrowser(browser)
+            .usingHttpAgent(browserHeader)
+            .setChromeOptions(option)
+            .build();
+        return driver;
+    } catch (err) {
+        console.log("not create driver");
+        return undefined;
+    }
+};
+interface IDriverAction {
+    type: string;
+    payload: WebDriver;
+}
+export const setDriverAction = (driver: WebDriver): IDriverAction => ({
+    type: SET,
+    payload: driver,
+});
+const driverRducer = (state = undefined, { type, payload }: IDriverAction) => {
+    switch (type) {
+        case SET:
+            return payload;
+        default:
+            return state;
+    }
+};
+export const driverStore = createStore(driverRducer);
