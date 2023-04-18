@@ -11,11 +11,11 @@ import * as chrome from "selenium-webdriver/chrome.js";
 import fs from "fs";
 import XLSX from "xlsx";
 import {
+    addItemAction,
     crawlingStore,
     ICategory,
     ICrawlingStore,
     IItem,
-    itemsAction,
     SET,
 } from "./store.js";
 import readline from "readline";
@@ -317,7 +317,7 @@ const itemCompanyFilter = () => {
         if (!item) break;
         newItem[item.id] = item;
     }
-    crawlingStore.dispatch(itemsAction(newItem));
+    crawlingStore.dispatch(addItemAction(newItem));
     saveJson("filterItems.json");
     jsonToXlsx("filterItems.json", "filterItems.xlsx");
 };

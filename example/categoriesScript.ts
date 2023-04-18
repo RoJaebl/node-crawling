@@ -4,11 +4,11 @@ interface ICategoryInfo {
     url: string;
     element: Element;
 }
-const findElementsEvaluate = (xPath: string, contextNode = document) => {
+const findElementsXPath = (xPath: string) => {
     const result = [];
     const iterator = document.evaluate(
         xPath,
-        contextNode,
+        document,
         null,
         XPathResult.ORDERED_NODE_ITERATOR_TYPE,
         null
@@ -23,13 +23,13 @@ const findElementsEvaluate = (xPath: string, contextNode = document) => {
 };
 const delay = (ms: number): Promise<void> =>
     new Promise((resolve) => setTimeout(resolve, ms));
-const hover = (overHover, element) => {
+const hover = (hoverOver, element) => {
     const rect = element.getBoundingClientRect();
-    overHover.view.moveTo(
+    hoverOver.view.moveTo(
         rect.left + rect.width / 2,
         rect.top + rect.height / 2
     );
-    element.dispatchEvent(overHover);
+    element.dispatchEvent(hoverOver);
 };
 const click = (click, element) => {
     const rect = element.getBoundingClientRect();
