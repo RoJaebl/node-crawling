@@ -194,10 +194,10 @@ const jsonToXlsx = (jsonPath: string, xlsxPath: string) => {
     );
 };
 // open json file
-const openJson = <T>(path: string): T =>
+export const openJson = <T>(path: string): T =>
     JSON.parse(fs.readFileSync(path).toString());
 // save json file
-const saveJson = (path: string) =>
+export const saveJson = (path: string) =>
     fs.writeFileSync(path, JSON.stringify(crawlingStore.getState()));
 // run
 const run = async () => {
@@ -218,7 +218,7 @@ const run = async () => {
         // write categories data into store
         else crawlingStore.dispatch(setCrawlingAction(openJson(CATEGORY_PATH)));
         // get category item
-        await getItems();
+        //await getItems();
         // get company detail
         await getDetail();
         // get item name
@@ -236,7 +236,7 @@ const emptyIgnore = () => {
     crawlingStore.dispatch(setCrawlingAction(openJson(CATEGORY_PATH)));
     const cpItem = { ...crawlingStore.getState().item };
     const newItem = Object.values(cpItem).reduce((acc, cur) => {
-        if (cur.company && cur.company.title !== "") acc[cur.id] = cur;
+        if (cur.company && cur.company.상호명 !== "") acc[cur.id] = cur;
         return acc;
     }, {});
     crawlingStore.dispatch(addItemAction(newItem));
@@ -277,7 +277,7 @@ const itemCompanyFilter = () => {
     const map = new Map<string, IItem>();
     for (const item of Object.values(cpCategory["item"])) {
         if (!item.company) continue;
-        map.set(item.company.mail, item);
+        map.set(item.company["e-mail"], item);
     }
     const iterator = map.values();
     while (true) {

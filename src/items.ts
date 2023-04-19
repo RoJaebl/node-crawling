@@ -1,4 +1,4 @@
-import { CATEGORY_PATH, pageScrollTo } from "./index.js";
+import { CATEGORY_PATH, pageScrollTo, saveJson } from "./index.js";
 import {
     addItemAction,
     crawlingStore,
@@ -24,7 +24,7 @@ interface ICrawlingItem {
     price: string;
     img: string;
 }
-const findElementsXPathScript = (xPath: string) => `
+export const findElementsXPathScript = (xPath: string) => `
 const findElementsXPath = (xPath) => {
     const iterator = document.evaluate(
         xPath,
@@ -39,13 +39,13 @@ const findElementsXPath = (xPath) => {
         nodes.push(curNode);
         curNode = iterator.iterateNext();
     }
-    if(nodes.length === 0 ) return undefined
+    if(nodes.length === 0 ) return undefined;
     return nodes;
 };
-const elements = findElementsXPath("${xPath}");
+let elements = findElementsXPath("${xPath}");
 `;
-const clickScript = (xPath: string) =>
-    findElementsXPathScript(xPath) + `elements[0].click();`;
+export const clickScript = (xPath: string, index: number = 0) =>
+    findElementsXPathScript(xPath) + `elements[${index}].click();`;
 const itemInfoScript = (xPath: string) =>
     findElementsXPathScript(xPath) +
     `
@@ -129,9 +129,6 @@ export const getItems = async () => {
         cpSubs[+subId].itemId.push(...itemIds);
         crawlingStore.dispatch(setSubAction(cpSubs));
 
-        fs.writeFileSync(
-            CATEGORY_PATH,
-            JSON.stringify(crawlingStore.getState())
-        );
+        saveJson(CATEGORY_PATH);
     }
 };

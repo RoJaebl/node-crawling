@@ -22,13 +22,13 @@ export interface ISub extends ICategory {
     itemId: number[];
 }
 export interface ICompany {
-    title?: string;
-    ceo?: string;
-    companyNum?: any;
-    business?: string;
-    adress?: string;
-    phone?: string;
-    mail?: string;
+    상호명?: string;
+    대표자?: string;
+    사업자등록번호?: string;
+    통신판매업번호?: string;
+    "사업장 소재지"?: string;
+    고객센터?: string;
+    "e-mail"?: string;
 }
 export interface IItem extends ICategory {
     majorId: number;

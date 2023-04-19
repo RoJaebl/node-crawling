@@ -5,7 +5,7 @@
     "type": "module",
     "scripts": {
         "gulp:build": "gulp build",
-        "build": "sudo rm -r build | tsc",
+        "build": "echo 5107 | sudo -S rm -r build | tsc",
         "clean": "tsc --build --clean",
         "start": "node build/index.js",
         "start:scraper": "nodemon --exec babel-node ./src/scraper.ts --delay 2",
