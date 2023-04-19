@@ -156,7 +156,10 @@ export const setDriverAction = (driver: WebDriver): IDriverAction => ({
     type: SET,
     payload: driver,
 });
-const driverRducer = (state = undefined, { type, payload }: IDriverAction) => {
+const driverRducer = (
+    state: WebDriver | undefined = undefined,
+    { type, payload }: IDriverAction
+) => {
     switch (type) {
         case SET:
             return payload;

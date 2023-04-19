@@ -1,11 +1,4 @@
-import { By } from "selenium-webdriver";
-import {
-    CATEGORY_PATH,
-    click,
-    pageScrollTo,
-    tryElement,
-    tryElements,
-} from "./index.js";
+import { CATEGORY_PATH, pageScrollTo } from "./index.js";
 import {
     addItemAction,
     crawlingStore,
@@ -15,25 +8,6 @@ import {
 } from "./store.js";
 import fs from "fs";
 
-const propsXPath = {
-    naverPay: By.xpath(`//a[text()='네이버페이']`),
-    selectItemNum: By.xpath(
-        `//div[contains(@class,'subFilter_select_box__dX_vV')][2]`
-    ),
-    selectItemNum20: By.xpath(
-        `//div[contains(@class,'subFilter_select_box__dX_vV')][2]//li//a[text()='20개씩 보기']`
-    ),
-    selectItemNum40: By.xpath(
-        `//div[contains(@class,'subFilter_select_box__dX_vV')][2]//li//a[text()='40개씩 보기']`
-    ),
-    selectItemNum60: By.xpath(
-        `//div[contains(@class,'subFilter_select_box__dX_vV')][2]//li//a[text()='60개씩 보기']`
-    ),
-    selectItemNum80: By.xpath(
-        `//div[contains(@class,'subFilter_select_box__dX_vV')][2]//li//a[text()='80개씩 보기']`
-    ),
-    items: By.xpath("//div[contains(@class,'basicList_item__0T9JD')]"),
-};
 export enum ECompanyClass {
     "씨앗" = 0,
     "새싹",
@@ -42,109 +16,118 @@ export enum ECompanyClass {
     "프리미엄",
     "플래티넘",
 }
+interface ICrawlingItem {
+    rating: string;
+    id: string;
+    url: string;
+    name: string;
+    price: string;
+    img: string;
+}
+const findElementsXPathScript = (xPath: string) => `
+const findElementsXPath = (xPath) => {
+    const iterator = document.evaluate(
+        xPath,
+        document,
+        null,
+        XPathResult.ORDERED_NODE_ITERATOR_TYPE,
+        null
+    );
+    const nodes = [];
+    let curNode = iterator.iterateNext();
+    while (curNode) {
+        nodes.push(curNode);
+        curNode = iterator.iterateNext();
+    }
+    if(nodes.length === 0 ) return undefined
+    return nodes;
+};
+const elements = findElementsXPath("${xPath}");
+`;
+const clickScript = (xPath: string) =>
+    findElementsXPathScript(xPath) + `elements[0].click();`;
+const itemInfoScript = (xPath: string) =>
+    findElementsXPathScript(xPath) +
+    `
+    return elements.map((element) => {
+        const ratingable = element.querySelector("span.basicList_grade__unbQp");
+        const priceable = element.querySelector("span.price_price__LEGN7");
+        const imgable = element.querySelector("img");
+        const linkable = element.querySelector("a.basicList_mall__BC5Xu");
+        const idable = linkable ? linkable.getAttribute("data-nclick") : "";
+        const idStart = idable.indexOf("i:") + "i:".length;
+        const idEnd = idable.indexOf(",r:");
 
+        const rating = ratingable?.querySelector("img") ? ratingable.innerText : "새싹";
+        const id = idable.slice(idStart, idEnd);
+        const url = linkable ? linkable.getAttribute("href"): "";
+        const name = linkable ? linkable.innerText : "";
+        const price = priceable ? priceable.innerText : "0원";
+        const img = imgable ? imgable.getAttribute("src") : "";
+        return {
+            rating,
+            id,
+            url,
+            name,
+            price,
+            img,
+        }
+    });`;
 export const getItems = async () => {
     const driver = driverStore.getState();
-    const newSubs = { ...crawlingStore.getState()["sub"] };
-    const newItems = { ...crawlingStore.getState()["item"] };
-    for await (const [subkey, sub] of Object.entries(newSubs)) {
+    const cpSubs = { ...crawlingStore.getState().sub };
+    for await (const [subId, sub] of Object.entries(cpSubs)) {
         if (sub.itemId.length !== 0) continue;
         await driver.get(sub.url);
         await driver.sleep(100);
 
-        const newItem: { [id: number]: IItem } = {};
-        const paypable = await tryElement(driver, propsXPath.naverPay);
-        await click(driver, paypable);
-
-        const selectable = await tryElement(driver, propsXPath.selectItemNum);
-        await click(driver, selectable);
-
-        const itemNumpable = await tryElement(
-            driver,
-            propsXPath.selectItemNum80
+        await driver.executeScript(clickScript("//a[text()='네이버페이']"));
+        await driver.executeScript(
+            clickScript(
+                "//div[contains(@class,'subFilter_select_box__dX_vV')][2]"
+            )
         );
-        await click(driver, itemNumpable);
+        await driver.executeScript(
+            clickScript(
+                "//div[contains(@class,'subFilter_select_box__dX_vV')][2]//li//a[text()='80개씩 보기']"
+            )
+        );
 
         await pageScrollTo(driver, { duration: 600, sleep: 100 });
 
-        let index = 0;
-        const items = await tryElements(driver, propsXPath.items, {
-            timeout: 500,
-        });
-        for await (const item of items) {
-            index++;
-            await driver.sleep(10);
-            const itemClassable = await tryElement(
-                driver,
-                By.xpath(
-                    `(//div[contains(@class,'basicList_mall_grade__1hPzs')])[${index}]//span[contains(@class,'basicList_grade__unbQp')]//img/parent::span`
-                ),
-                { element: item }
-            );
-            if (itemClassable === undefined) continue;
-            const itemClass =
-                (await itemClassable.getText()) as keyof typeof ECompanyClass;
-            if (ECompanyClass[itemClass] < 3) continue;
-            const apable = await tryElement(
-                driver,
-                By.xpath(
-                    `(//a[contains(@class,'basicList_mall__BC5Xu')])[${index}]`
-                ),
-                { element: item }
-            );
-            const url = await apable.getAttribute("href");
+        const items: ICrawlingItem[] = await driver.executeScript(
+            itemInfoScript("//div[contains(@class,'basicList_item__0T9JD')]")
+        );
+        const newItem: { [id: number]: IItem } = {};
+        for (const item of items) {
+            const { id, name, price, url, img, rating } = item;
             if (
+                id === "" ||
+                ECompanyClass[rating] < 3 ||
                 url.includes("shopping.naver.com") ||
                 (!url.includes("smartstore.naver.com") &&
                     !url.includes("adcr.naver.com"))
             )
                 continue;
-            const id = +(await apable
-                .getAttribute("data-nclick")
-                .then((value) => {
-                    const idStart = value.indexOf("i:") + "i:".length;
-                    const idEnd = value.indexOf(",r:");
-                    return value.slice(idStart, idEnd);
-                }));
-            const name = await (
-                await tryElement(
-                    driver,
-                    By.xpath(
-                        `(//div[contains(@class,'basicList_title__VfX3c')])[${index}]`
-                    ),
-                    { element: item }
-                )
-            ).getText();
-            const price = await (
-                await tryElement(
-                    driver,
-                    By.xpath(
-                        `(//span[contains(@class,'price_price__LEGN7')])[${index}]`
-                    ),
-                    { element: item }
-                )
-            ).getText();
             newItem[id] = {
                 id,
                 name,
                 price,
                 url,
-                itemClass,
+                itemClass: rating,
                 majorId: sub.majorId,
                 majorName: sub.majorName,
                 minorId: sub.minorId,
                 minorName: sub.minorName,
-                subId: +subkey,
+                subId: +subId,
                 subName: sub.name,
             };
         }
-
-        Object.assign(newItems, newItem);
-        if (Object.keys(newItem).length === 0) newSubs[+subkey].itemId.push(0);
-        newSubs[+subkey].itemId.push(...Object.keys(newItem).map((id) => +id));
-
-        crawlingStore.dispatch(setSubAction(newSubs));
-        crawlingStore.dispatch(addItemAction(newItems));
+        crawlingStore.dispatch(addItemAction(newItem));
+        const itemIds = Object.keys(newItem).map((id) => +id);
+        if (itemIds.length === 0) cpSubs[+subId].itemId.push(0);
+        cpSubs[+subId].itemId.push(...itemIds);
+        crawlingStore.dispatch(setSubAction(cpSubs));
 
         fs.writeFileSync(
             CATEGORY_PATH,

@@ -193,6 +193,12 @@ const jsonToXlsx = (jsonPath: string, xlsxPath: string) => {
         })
     );
 };
+// open json file
+const openJson = <T>(path: string): T =>
+    JSON.parse(fs.readFileSync(path).toString());
+// save json file
+const saveJson = (path: string) =>
+    fs.writeFileSync(path, JSON.stringify(crawlingStore.getState()));
 // run
 const run = async () => {
     driverStore.dispatch(
@@ -225,6 +231,7 @@ const run = async () => {
     }
 };
 run();
+
 const emptyIgnore = () => {
     crawlingStore.dispatch(setCrawlingAction(openJson(CATEGORY_PATH)));
     const cpItem = { ...crawlingStore.getState().item };
@@ -236,12 +243,7 @@ const emptyIgnore = () => {
     saveJson("ignore.json");
     jsonToXlsx("ignore.json", "ignore.xlsx");
 };
-// open json file
-const openJson = <T>(path: string): T =>
-    JSON.parse(fs.readFileSync(path).toString());
-// save json file
-const saveJson = (path: string) =>
-    fs.writeFileSync(path, JSON.stringify(crawlingStore.getState()));
+
 // try number
 const tryNum = (str: string): number | undefined => {
     const tryNum = parseFloat(str);
