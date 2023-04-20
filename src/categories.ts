@@ -57,7 +57,7 @@ export const getCategories = async () => {
         {}
     );
     for await (const major of majors) {
-        await hover(driver, major.element);
+        await hover(driver, major.element, { sleep: 200 });
         const minors = Object.values(
             await driver.executeScript(
                 findElementsScript("_categoryLayer_middle_category_2g2zY")

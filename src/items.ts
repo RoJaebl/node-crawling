@@ -103,7 +103,7 @@ export const getItems = async () => {
             const { id, name, price, url, img, rating } = item;
             if (
                 id === "" ||
-                ECompanyClass[rating] < 3 ||
+                ECompanyClass[rating] !== 2 ||
                 url.includes("shopping.naver.com") ||
                 (!url.includes("smartstore.naver.com") &&
                     !url.includes("adcr.naver.com"))

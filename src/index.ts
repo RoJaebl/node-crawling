@@ -218,7 +218,7 @@ const run = async () => {
         // write categories data into store
         else crawlingStore.dispatch(setCrawlingAction(openJson(CATEGORY_PATH)));
         // get category item
-        //await getItems();
+        await getItems();
         // get company detail
         await getDetail();
         // get item name
