@@ -50,27 +50,32 @@ const itemInfoScript = (xPath: string) =>
     findElementsXPathScript(xPath) +
     `
     return elements.map((element) => {
-        const ratingable = element.querySelector("span.basicList_grade__unbQp");
-        const priceable = element.querySelector("span.price_price__LEGN7");
-        const imgable = element.querySelector("img");
-        const linkable = element.querySelector("a.basicList_mall__BC5Xu");
-        const idable = linkable ? linkable.getAttribute("data-nclick") : "";
-        const idStart = idable.indexOf("i:") + "i:".length;
-        const idEnd = idable.indexOf(",r:");
-
-        const rating = ratingable?.querySelector("img") ? ratingable.innerText : "새싹";
-        const id = idable.slice(idStart, idEnd);
-        const url = linkable ? linkable.getAttribute("href"): "";
-        const name = linkable ? linkable.innerText : "";
-        const price = priceable ? priceable.innerText : "0원";
-        const img = imgable ? imgable.getAttribute("src") : "";
-        return {
-            rating,
-            id,
-            url,
-            name,
-            price,
-            img,
+        try{
+            const ratingable = element.querySelector("span.basicList_grade__unbQp");
+            const ratingImg = ratingable ? ratingable.querySelector("img") : null;
+            const priceable = element.querySelector("span.price_price__LEGN7");
+            const imgable = element.querySelector("img");
+            const linkable = element.querySelector("a.basicList_mall__BC5Xu");
+            const idable = linkable ? linkable.getAttribute("data-nclick") : "";
+            const idStart = idable.indexOf("i:") + "i:".length;
+            const idEnd = idable.indexOf(",r:");
+    
+            const rating = ratingImg ? ratingable.innerText : "새싹";
+            const id = idable.slice(idStart, idEnd);
+            const url = linkable ? linkable.getAttribute("href"): "";
+            const name = linkable ? linkable.innerText : "";
+            const price = priceable ? priceable.innerText : "0원";
+            const img = imgable ? imgable.getAttribute("src") : "";
+            return {
+                rating,
+                id,
+                url,
+                name,
+                price,
+                img,
+            }
+        }catch(e){
+            return undefined;
         }
     });`;
 export const getItems = async () => {
@@ -81,54 +86,59 @@ export const getItems = async () => {
         await driver.get(sub.url);
         await driver.sleep(100);
 
-        await driver.executeScript(clickScript("//a[text()='네이버페이']"));
-        await driver.executeScript(
-            clickScript(
-                "//div[contains(@class,'subFilter_select_box__dX_vV')][2]"
-            )
-        );
-        await driver.executeScript(
-            clickScript(
-                "//div[contains(@class,'subFilter_select_box__dX_vV')][2]//li//a[text()='80개씩 보기']"
-            )
-        );
+        try {
+            await driver.executeScript(clickScript("//a[text()='네이버페이']"));
+            await driver.executeScript(
+                clickScript(
+                    "//div[contains(@class,'subFilter_select_box__dX_vV')][2]"
+                )
+            );
+            await driver.executeScript(
+                clickScript(
+                    "//div[contains(@class,'subFilter_select_box__dX_vV')][2]//li//a[text()='80개씩 보기']"
+                )
+            );
 
-        await pageScrollTo(driver, { duration: 600, sleep: 100 });
+            await pageScrollTo(driver, { duration: 600, sleep: 100 });
 
-        const items: ICrawlingItem[] = await driver.executeScript(
-            itemInfoScript("//div[contains(@class,'basicList_item__0T9JD')]")
-        );
-        const newItem: { [id: number]: IItem } = {};
-        for (const item of items) {
-            const { id, name, price, url, img, rating } = item;
-            if (
-                id === "" ||
-                ECompanyClass[rating] !== 2 ||
-                url.includes("shopping.naver.com") ||
-                (!url.includes("smartstore.naver.com") &&
-                    !url.includes("adcr.naver.com"))
-            )
-                continue;
-            newItem[id] = {
-                id,
-                name,
-                price,
-                url,
-                itemClass: rating,
-                majorId: sub.majorId,
-                majorName: sub.majorName,
-                minorId: sub.minorId,
-                minorName: sub.minorName,
-                subId: +subId,
-                subName: sub.name,
-            };
-        }
-        crawlingStore.dispatch(addItemAction(newItem));
-        const itemIds = Object.keys(newItem).map((id) => +id);
-        if (itemIds.length === 0) cpSubs[+subId].itemId.push(0);
-        cpSubs[+subId].itemId.push(...itemIds);
-        crawlingStore.dispatch(setSubAction(cpSubs));
+            const items: ICrawlingItem[] = await driver.executeScript(
+                itemInfoScript(
+                    "//div[contains(@class,'basicList_item__0T9JD')]"
+                )
+            );
+            const newItem: { [id: number]: IItem } = {};
+            for (const item of items) {
+                if (!item) continue;
+                const { id, name, price, url, img, rating } = item;
+                if (
+                    id === "" ||
+                    ECompanyClass[rating] !== 2 ||
+                    url.includes("shopping.naver.com") ||
+                    (!url.includes("smartstore.naver.com") &&
+                        !url.includes("adcr.naver.com"))
+                )
+                    continue;
+                newItem[id] = {
+                    id,
+                    name,
+                    price,
+                    url,
+                    itemClass: rating,
+                    majorId: sub.majorId,
+                    majorName: sub.majorName,
+                    minorId: sub.minorId,
+                    minorName: sub.minorName,
+                    subId: +subId,
+                    subName: sub.name,
+                };
+            }
+            crawlingStore.dispatch(addItemAction(newItem));
+            const itemIds = Object.keys(newItem).map((id) => +id);
+            if (itemIds.length === 0) cpSubs[+subId].itemId.push(0);
+            cpSubs[+subId].itemId.push(...itemIds);
+            crawlingStore.dispatch(setSubAction(cpSubs));
 
-        saveJson(CATEGORY_PATH);
+            saveJson(CATEGORY_PATH);
+        } catch {}
     }
 };
