@@ -24,6 +24,7 @@ import { getCategories } from "./categories.js";
 import { getItems } from "./items.js";
 import { getDetail } from "./detail.js";
 import { ECompanyClass } from "./items.js";
+import { setItemAction } from "./store.js";
 
 // categories data path
 export const CATEGORY_PATH = "categories.json";
@@ -199,6 +200,40 @@ export const openJson = <T>(path: string): T =>
 // save json file
 export const saveJson = (path: string) =>
     fs.writeFileSync(path, JSON.stringify(crawlingStore.getState()));
+
+    
+const emptyIgnore = (jsonPath: string) => {
+    crawlingStore.dispatch(setCrawlingAction(openJson(jsonPath)));
+    const cpItem = { ...crawlingStore.getState().item };
+    const newItem = Object.values(cpItem).reduce((acc, cur) => {
+        if(!cur.company || Object.keys(cur.company).length === 0) return acc;
+        acc[cur.id] = cur;
+        return acc;
+    }, {});
+    crawlingStore.dispatch(setItemAction(newItem));
+    saveJson("ignore.json");
+    jsonToXlsx("ignore.json", "ignore.xlsx");
+};
+// Item company duplicate filter
+const itemCompanyFilter = (jsonPath: string) => {
+    crawlingStore.dispatch(setCrawlingAction(openJson(jsonPath)));
+    const cpCategory = { ...crawlingStore.getState() };
+    const newItem: { [id: number]: IItem } = {};
+    const map = new Map<string, IItem>();
+    for (const item of Object.values(cpCategory["item"])) {
+        map.set(item.company["e-mail"], item);
+    }
+    const iterator = map.values();
+    while (true) {
+        const item = iterator.next().value;
+        if (!item) break;
+        newItem[item.id] = item;
+    }
+    crawlingStore.dispatch(setItemAction(newItem));
+    saveJson("filterItems.json");
+    jsonToXlsx("filterItems.json", "filterItems.xlsx");
+};
+
 // run
 const run = async () => {
     driverStore.dispatch(
@@ -230,20 +265,10 @@ const run = async () => {
         await driver.quit();
     }
 };
-run();
+// run();
 
-const emptyIgnore = () => {
-    crawlingStore.dispatch(setCrawlingAction(openJson(CATEGORY_PATH)));
-    const cpItem = { ...crawlingStore.getState().item };
-    const newItem = Object.values(cpItem).reduce((acc, cur) => {
-        if (cur.company && cur.company.상호명 !== "") acc[cur.id] = cur;
-        return acc;
-    }, {});
-    crawlingStore.dispatch(addItemAction(newItem));
-    saveJson("ignore.json");
-    jsonToXlsx("ignore.json", "ignore.xlsx");
-};
-
+emptyIgnore(CATEGORY_PATH); 
+itemCompanyFilter("ignore.json");
 // try number
 const tryNum = (str: string): number | undefined => {
     const tryNum = parseFloat(str);
@@ -270,25 +295,7 @@ const classConverte = () => {
     jsonToXlsx("renameClass.json", "renameClass.xlsx");
 };
 
-// Item company duplicate filter
-const itemCompanyFilter = () => {
-    const cpCategory = { ...crawlingStore.getState() };
-    const newItem: { [id: number]: IItem } = {};
-    const map = new Map<string, IItem>();
-    for (const item of Object.values(cpCategory["item"])) {
-        if (!item.company) continue;
-        map.set(item.company["e-mail"], item);
-    }
-    const iterator = map.values();
-    while (true) {
-        const item = iterator.next().value;
-        if (!item) break;
-        newItem[item.id] = item;
-    }
-    crawlingStore.dispatch(addItemAction(newItem));
-    saveJson("filterItems.json");
-    jsonToXlsx("filterItems.json", "filterItems.xlsx");
-};
+
 
 // get array to object
 const arrayToObject = (array: any[], keyField: string) => {
